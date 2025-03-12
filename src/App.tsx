@@ -12,12 +12,14 @@ import EmployeeHome from "./pages/employee/Home";
 import EmployeeProfile from "./pages/employee/Profile";
 import JobMatches from "./pages/employee/JobMatches";
 import AptitudeTests from "./pages/employee/AptitudeTests";
+import EmployeeInterviews from "./pages/employee/Interviews";
 
 // Recruiter Pages
 import RecruiterHome from "./pages/recruiter/Home";
 import RecruiterProfile from "./pages/recruiter/Profile";
 import Candidates from "./pages/recruiter/Candidates";
 import Aptitude from "./pages/recruiter/Aptitude";
+import RecruiterInterviews from "./pages/recruiter/Interviews";
 
 const queryClient = new QueryClient();
 
@@ -35,12 +37,14 @@ const App = () => (
           <Route path="/employee/profile" element={<EmployeeProfile />} />
           <Route path="/employee/job-matches" element={<JobMatches />} />
           <Route path="/employee/aptitude-tests" element={<AptitudeTests />} />
+          <Route path="/employee/interviews" element={<EmployeeInterviews />} />
           
           {/* Recruiter Routes */}
           <Route path="/recruiter/home" element={<RecruiterHome />} />
           <Route path="/recruiter/profile" element={<RecruiterProfile />} />
           <Route path="/recruiter/candidates" element={<Candidates />} />
           <Route path="/recruiter/aptitude" element={<Aptitude />} />
+          <Route path="/recruiter/interviews" element={<RecruiterInterviews />} />
           
           {/* Not Found */}
           <Route path="*" element={<NotFound />} />
