@@ -16,6 +16,7 @@ import JobMatches from "./pages/employee/JobMatches";
 import RecruiterHome from "./pages/recruiter/Home";
 import RecruiterProfile from "./pages/recruiter/Profile";
 import Candidates from "./pages/recruiter/Candidates";
+import Aptitude from "./pages/recruiter/Aptitude";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/recruiter/home" element={<RecruiterHome />} />
           <Route path="/recruiter/profile" element={<RecruiterProfile />} />
           <Route path="/recruiter/candidates" element={<Candidates />} />
+          <Route path="/recruiter/aptitude" element={<Aptitude />} />
           
           {/* Not Found */}
           <Route path="*" element={<NotFound />} />

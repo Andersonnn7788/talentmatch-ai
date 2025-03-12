@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { User, BriefcaseBusiness, Search, Bell } from 'lucide-react';
+import { User, BriefcaseBusiness, Search, Bell, GraduationCap } from 'lucide-react';
 
 interface NavbarProps {
   userType: 'employee' | 'recruiter';
@@ -22,6 +22,7 @@ const Navbar = ({ userType }: NavbarProps) => {
         { name: 'Home', path: `${basePath}/home`, icon: Search },
         { name: 'Profile', path: `${basePath}/profile`, icon: User },
         { name: 'Candidates', path: `${basePath}/candidates`, icon: BriefcaseBusiness },
+        { name: 'Aptitude', path: `${basePath}/aptitude`, icon: GraduationCap },
       ];
 
   return (
