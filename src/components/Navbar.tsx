@@ -17,6 +17,7 @@ const Navbar = ({ userType }: NavbarProps) => {
         { name: 'Home', path: `${basePath}/home`, icon: Search },
         { name: 'Profile', path: `${basePath}/profile`, icon: User },
         { name: 'Job Matches', path: `${basePath}/job-matches`, icon: BriefcaseBusiness },
+        { name: 'Aptitude Tests', path: `${basePath}/aptitude-tests`, icon: GraduationCap },
       ]
     : [
         { name: 'Home', path: `${basePath}/home`, icon: Search },

@@ -2,12 +2,12 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, BookUser, Briefcase, Check, Plus, FileText } from 'lucide-react';
+import { GraduationCap, BookUser, Clock, CheckCircle, Timer } from 'lucide-react';
 import Navbar from "@/components/Navbar";
-import AptitudeTestCard from "@/components/AptitudeTestCard";
+import AptitudeTestItem from "@/components/AptitudeTestItem";
 
-// Sample aptitude test data
-const sampleTests = [
+// Sample aptitude test data for employee
+const availableTests = [
   {
     id: "1",
     title: "Software Development Skills",
@@ -15,8 +15,8 @@ const sampleTests = [
     questions: 15,
     timeLimit: 45,
     category: "technical" as const,
-    created: "2 weeks ago",
-    responses: 24
+    company: "TechCorp Inc.",
+    status: "available"
   },
   {
     id: "2",
@@ -25,8 +25,8 @@ const sampleTests = [
     questions: 10,
     timeLimit: 30,
     category: "soft" as const,
-    created: "1 month ago",
-    responses: 18
+    company: "Management Solutions",
+    status: "available"
   },
   {
     id: "3",
@@ -35,8 +35,8 @@ const sampleTests = [
     questions: 20,
     timeLimit: 60,
     category: "technical" as const,
-    created: "3 days ago",
-    responses: 5
+    company: "BrandGrowth Agency",
+    status: "completed"
   },
   {
     id: "4",
@@ -45,43 +45,50 @@ const sampleTests = [
     questions: 12,
     timeLimit: 40,
     category: "soft" as const,
-    created: "1 week ago",
-    responses: 32
+    company: "Global Enterprises",
+    status: "in-progress"
   }
 ];
 
-const Aptitude = () => {
+const AptitudeTests = () => {
   const [activeTab, setActiveTab] = useState("all");
   
   // Filter tests based on active tab
   const filteredTests = activeTab === "all" 
-    ? sampleTests 
-    : sampleTests.filter(test => test.category === activeTab);
+    ? availableTests 
+    : activeTab === "completed"
+    ? availableTests.filter(test => test.status === "completed")
+    : activeTab === "available"
+    ? availableTests.filter(test => test.status === "available")
+    : availableTests.filter(test => test.category === activeTab);
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userType="recruiter" />
+      <Navbar userType="employee" />
       
       <main className="container mx-auto px-4 pt-24 pb-10">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Aptitude Tests</h1>
             <p className="text-muted-foreground mt-1">
-              Create and manage assessments for evaluating candidate skills
+              Complete assessments to showcase your skills to potential employers
             </p>
           </div>
-          
-          <Button className="mt-4 md:mt-0">
-            <Plus size={18} className="mr-1" />
-            Create New Test
-          </Button>
         </div>
         
         <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="all" className="flex items-center">
-              <FileText size={16} className="mr-1" />
+              <GraduationCap size={16} className="mr-1" />
               All Tests
+            </TabsTrigger>
+            <TabsTrigger value="available" className="flex items-center">
+              <Timer size={16} className="mr-1" />
+              Available
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="flex items-center">
+              <CheckCircle size={16} className="mr-1" />
+              Completed
             </TabsTrigger>
             <TabsTrigger value="technical" className="flex items-center">
               <GraduationCap size={16} className="mr-1" />
@@ -94,25 +101,41 @@ const Aptitude = () => {
           </TabsList>
           
           <TabsContent value="all" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {filteredTests.map(test => (
-                <AptitudeTestCard key={test.id} test={test} />
+                <AptitudeTestItem key={test.id} test={test} />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="available" className="mt-0">
+            <div className="grid grid-cols-1 gap-4">
+              {filteredTests.map(test => (
+                <AptitudeTestItem key={test.id} test={test} />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="completed" className="mt-0">
+            <div className="grid grid-cols-1 gap-4">
+              {filteredTests.map(test => (
+                <AptitudeTestItem key={test.id} test={test} />
               ))}
             </div>
           </TabsContent>
           
           <TabsContent value="technical" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {filteredTests.map(test => (
-                <AptitudeTestCard key={test.id} test={test} />
+                <AptitudeTestItem key={test.id} test={test} />
               ))}
             </div>
           </TabsContent>
           
           <TabsContent value="soft" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {filteredTests.map(test => (
-                <AptitudeTestCard key={test.id} test={test} />
+                <AptitudeTestItem key={test.id} test={test} />
               ))}
             </div>
           </TabsContent>
@@ -122,4 +145,4 @@ const Aptitude = () => {
   );
 };
 
-export default Aptitude;
+export default AptitudeTests;

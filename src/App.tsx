@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import EmployeeHome from "./pages/employee/Home";
 import EmployeeProfile from "./pages/employee/Profile";
 import JobMatches from "./pages/employee/JobMatches";
+import AptitudeTests from "./pages/employee/AptitudeTests";
 
 // Recruiter Pages
 import RecruiterHome from "./pages/recruiter/Home";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/employee/home" element={<EmployeeHome />} />
           <Route path="/employee/profile" element={<EmployeeProfile />} />
           <Route path="/employee/job-matches" element={<JobMatches />} />
+          <Route path="/employee/aptitude-tests" element={<AptitudeTests />} />
           
           {/* Recruiter Routes */}
           <Route path="/recruiter/home" element={<RecruiterHome />} />
