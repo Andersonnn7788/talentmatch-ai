@@ -1,10 +1,21 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+
+// Employee Pages
+import EmployeeHome from "./pages/employee/Home";
+import EmployeeProfile from "./pages/employee/Profile";
+import JobMatches from "./pages/employee/JobMatches";
+
+// Recruiter Pages
+import RecruiterHome from "./pages/recruiter/Home";
+import RecruiterProfile from "./pages/recruiter/Profile";
+import Candidates from "./pages/recruiter/Candidates";
 
 const queryClient = new QueryClient();
 
@@ -16,7 +27,18 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          
+          {/* Employee Routes */}
+          <Route path="/employee/home" element={<EmployeeHome />} />
+          <Route path="/employee/profile" element={<EmployeeProfile />} />
+          <Route path="/employee/job-matches" element={<JobMatches />} />
+          
+          {/* Recruiter Routes */}
+          <Route path="/recruiter/home" element={<RecruiterHome />} />
+          <Route path="/recruiter/profile" element={<RecruiterProfile />} />
+          <Route path="/recruiter/candidates" element={<Candidates />} />
+          
+          {/* Not Found */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
