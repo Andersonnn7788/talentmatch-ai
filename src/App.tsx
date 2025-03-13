@@ -18,7 +18,7 @@ import EmployeeInterviews from "./pages/employee/Interviews";
 import RecruiterHome from "./pages/recruiter/Home";
 import RecruiterProfile from "./pages/recruiter/Profile";
 import Candidates from "./pages/recruiter/Candidates";
-import Aptitude from "./pages/recruiter/Aptitude";
+import AptitudeTests as RecruiterAptitudeTests from "./pages/recruiter/Aptitude";
 import RecruiterInterviews from "./pages/recruiter/Interviews";
 
 const queryClient = new QueryClient();
@@ -43,7 +43,7 @@ const App = () => (
           <Route path="/recruiter/home" element={<RecruiterHome />} />
           <Route path="/recruiter/profile" element={<RecruiterProfile />} />
           <Route path="/recruiter/candidates" element={<Candidates />} />
-          <Route path="/recruiter/aptitude" element={<Aptitude />} />
+          <Route path="/recruiter/aptitude" element={<RecruiterAptitudeTests />} />
           <Route path="/recruiter/interviews" element={<RecruiterInterviews />} />
           
           {/* Not Found */}

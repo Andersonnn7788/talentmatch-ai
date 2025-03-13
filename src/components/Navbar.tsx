@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,7 @@ const Navbar = ({ userType }: NavbarProps) => {
         { name: 'Home', path: `${basePath}/home`, icon: Search },
         { name: 'Profile', path: `${basePath}/profile`, icon: User },
         { name: 'Candidates', path: `${basePath}/candidates`, icon: BriefcaseBusiness },
-        { name: 'Aptitude', path: `${basePath}/aptitude`, icon: GraduationCap },
+        { name: 'Aptitude Tests', path: `${basePath}/aptitude`, icon: GraduationCap },
         { name: 'Interviews', path: `${basePath}/interviews`, icon: Video },
       ];
 
