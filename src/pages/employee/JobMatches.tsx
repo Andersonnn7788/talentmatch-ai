@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import JobCard from '@/components/JobCard';
+import AIAssistant from '@/components/AIAssistant';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,18 +96,14 @@ const JobMatches = () => {
     if (type === 'match') {
       setMatchedJobs([...matchedJobs].sort((a, b) => (b.match || 0) - (a.match || 0)));
     } else {
-      // This is just a simplistic sort for the demo
-      // In reality, you'd parse the date strings and compare them
       setMatchedJobs([...matchedJobs].sort((a, b) => a.posted.localeCompare(b.posted)));
     }
   };
   
   const handleRefresh = () => {
     setIsRefreshing(true);
-    // Simulate refresh delay
     setTimeout(() => {
       setIsRefreshing(false);
-      // In a real app, this would trigger a refresh of matches from the API
     }, 1500);
   };
   
@@ -117,9 +113,7 @@ const JobMatches = () => {
     setTimeout(() => {
       setIsOptimizing(false);
       
-      // Simulate AI-optimized match scores based on preferences
       const updatedJobs = matchedJobs.map(job => {
-        // Adjust match score based on preferences
         const skillImpact = (skillFocus[0] - 50) * 0.1;
         const balanceImpact = (workLifeBalance[0] - 50) * 0.08;
         const growthImpact = (careerGrowth[0] - 50) * 0.12;
@@ -133,10 +127,8 @@ const JobMatches = () => {
         return { ...job, match: Math.round(adjustedMatch) };
       });
       
-      // Sort by new match scores
       setMatchedJobs([...updatedJobs].sort((a, b) => (b.match || 0) - (a.match || 0)));
       
-      // Generate AI insight
       const topJob = updatedJobs.sort((a, b) => (b.match || 0) - (a.match || 0))[0];
       
       setAiInsight(
@@ -214,7 +206,6 @@ const JobMatches = () => {
             </div>
           </div>
           
-          {/* AI Preferences Panel */}
           {showAIPreferences && (
             <Card className="mb-6 animate-fade-in bg-primary/5 border-primary/20">
               <CardHeader className="pb-2">
@@ -328,6 +319,8 @@ const JobMatches = () => {
           </div>
         </div>
       </main>
+      
+      <AIAssistant userType="employee" userName="Anderson" />
     </div>
   );
 };
