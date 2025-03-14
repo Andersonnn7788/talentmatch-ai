@@ -2,12 +2,31 @@
 import React from 'react';
 import Navbar from '@/components/Navbar';
 import AIAssistant from '@/components/AIAssistant';
+import JobSearchBar from '@/components/JobSearchBar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, BarChart3, BriefcaseBusiness, Flame, GraduationCap, ListChecks, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const EmployeeHome = () => {
+  const handleSearch = (searchParams: {
+    query: string;
+    jobType: string;
+    industry: string;
+    location: string;
+  }) => {
+    console.log('Search params:', searchParams);
+    toast.success('Searching for jobs...');
+    // In a real app, we would fetch jobs based on these params
+  };
+
+  const handleAIMatch = () => {
+    console.log('AI Match clicked');
+    toast.success('AI is matching your profile with available jobs...');
+    // In a real app, we would trigger the AI matching process
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar userType="employee" />
@@ -33,6 +52,11 @@ const EmployeeHome = () => {
               </Button>
             </div>
           </div>
+        </section>
+
+        {/* Job Search Bar */}
+        <section className="mb-10">
+          <JobSearchBar onSearch={handleSearch} onAIMatch={handleAIMatch} />
         </section>
 
         {/* Stats Cards */}

@@ -28,7 +28,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <form onSubmit={handleSearch} className="glass rounded-xl p-6 animate-fade-in">
+      <form onSubmit={handleSearch} className="glass rounded-xl p-6 shadow-sm border border-slate-200 bg-white/50 backdrop-blur-sm">
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div className="space-y-2">
@@ -88,7 +88,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
                   placeholder="Job title, keyword, company..."
                   className="rounded-r-none"
                 />
-                <Button type="submit" className="rounded-l-none">
+                <Button type="submit" className="rounded-l-none bg-blue-500 hover:bg-blue-600">
                   <Search size={18} />
                 </Button>
               </div>
@@ -114,7 +114,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
               type="button" 
               onClick={onAIMatch} 
               variant="default" 
-              className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
+              className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2"
             >
               <Sparkles size={16} className="animate-float" />
               <span>AI Match</span>
