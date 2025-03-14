@@ -6,8 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, BarChart3, BriefcaseBusiness, Calendar, ListChecks, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 
 const RecruiterHome = () => {
+  // Sample data for AI matching visualization
+  const matchingData = [
+    { name: 'Technical Skills', match: 92 },
+    { name: 'Experience', match: 85 },
+    { name: 'Education', match: 78 },
+    { name: 'Soft Skills', match: 88 },
+    { name: 'Culture Fit', match: 90 }
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar userType="recruiter" />
@@ -33,6 +44,84 @@ const RecruiterHome = () => {
               </Button>
             </div>
           </div>
+        </section>
+
+        {/* AI Resume Screening Highlight */}
+        <section className="mb-10">
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" /> 
+                  AI Resume Screening
+                </CardTitle>
+                <Button asChild size="sm">
+                  <Link to="/recruiter/candidates">
+                    View All Candidates
+                  </Link>
+                </Button>
+              </div>
+              <CardDescription>
+                Our AI has analyzed all candidate resumes and matched them to your open positions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-md font-medium mb-3">Candidate Match Analysis</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={matchingData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                        <YAxis type="category" dataKey="name" width={120} />
+                        <Bar dataKey="match" fill="#3498db" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-md font-medium mb-3">How AI Screening Works</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-full bg-primary/10 p-2 mt-0.5">
+                        <span className="text-primary font-medium">1</span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium">Resume Analysis</h4>
+                        <p className="text-sm text-muted-foreground">AI extracts key information from resumes including skills, experience, and education</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-full bg-primary/10 p-2 mt-0.5">
+                        <span className="text-primary font-medium">2</span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium">Job Matching</h4>
+                        <p className="text-sm text-muted-foreground">Algorithms compare candidate qualifications against job requirements</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-full bg-primary/10 p-2 mt-0.5">
+                        <span className="text-primary font-medium">3</span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium">Percentage Scoring</h4>
+                        <p className="text-sm text-muted-foreground">Candidates receive match scores across multiple criteria for quick assessment</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-center mt-3">
+                      <Button variant="outline" asChild>
+                        <Link to="/recruiter/candidates">
+                          See AI-Ranked Candidates
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
         {/* Stats Cards */}
@@ -97,7 +186,7 @@ const RecruiterHome = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Top Candidates</CardTitle>
-                <CardDescription>Highly matched candidates for open positions</CardDescription>
+                <CardDescription>AI-ranked candidates for open positions</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
