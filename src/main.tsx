@@ -1,6 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import AppDebug from './AppDebug.tsx';
+import AppWorking from './AppWorking.tsx';
+import AppFixed from './AppFixed.tsx';
+import MinimalApp from './MinimalApp.tsx';
 import './index.css';
 
 // Add error boundary to catch any rendering errors
@@ -45,11 +49,10 @@ try {
   const root = document.getElementById('root');
   if (!root) {
     throw new Error('Root element not found');
-  }
-  createRoot(root).render(
+  }  createRoot(root).render(
     React.createElement(React.StrictMode, null,
       React.createElement(ErrorBoundary, null,
-        React.createElement(App)
+        React.createElement(AppFixed)
       )
     )
   );
