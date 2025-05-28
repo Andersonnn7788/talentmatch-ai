@@ -1,106 +1,124 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Sparkles, User, BriefcaseBusiness } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Users, Briefcase, Target, Zap } from 'lucide-react';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      const userType = user.user_metadata?.user_type || 'employee';
+      navigate(`/${userType}/home`);
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/10">
       {/* Header */}
-      <header className="w-full py-4 px-6">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="font-bold text-2xl tracking-tight text-primary">
-            TalentMatch<span className="text-primary/90">.AI</span>
-          </div>
-        </div>
+      <header className="container mx-auto px-4 py-6">
+        <nav className="flex justify-between items-center">
+          <div className="text-2xl font-bold text-primary">TalentMatch.AI</div>
+          <Button onClick={() => navigate('/auth')} variant="outline">
+            Sign In
+          </Button>
+        </nav>
       </header>
 
       {/* Hero Section */}
-      <section className="flex-1 flex items-center justify-center">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-            <div className="lg:w-1/2 space-y-6 text-center lg:text-left animate-fade-in">
-              <div className="inline-flex items-center rounded-full px-3 py-1 text-sm bg-primary/10 text-primary">
-                <Sparkles className="mr-1 h-3 w-3 animate-float" />
-                <span>Powered by AI</span>
-              </div>
-              
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-                Find the perfect match with <span className="text-primary">TalentMatch.AI</span>
-              </h1>
-              
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0">
-                Intelligent job matching platform that connects the right talent with the right opportunities, powered by advanced AI algorithms.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link to="/employee/home">
-                  <Button size="lg" className="w-full sm:w-auto">
-                    <User className="mr-2 h-5 w-5" />
-                    Job Seeker
-                  </Button>
-                </Link>
-                
-                <Link to="/recruiter/home">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                    <BriefcaseBusiness className="mr-2 h-5 w-5" />
-                    Recruiter
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            
-            <div className="lg:w-1/2 relative animate-fade-in">
-              <div className="relative rounded-2xl overflow-hidden shadow-xl">
-                <div className="aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background backdrop-blur rounded-2xl flex items-center justify-center">
-                  <div className="absolute inset-0 bg-grid-white/10"></div>
-                  <div className="relative z-10 p-8">
-                    <div className="w-full max-w-md mx-auto glass rounded-xl p-6 shadow-lg transform hover:scale-[1.01] transition-transform duration-300">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <BriefcaseBusiness className="h-5 w-5 text-primary" />
-                          </div>
-                          <div className="ml-3">
-                            <div className="font-semibold">Senior Developer</div>
-                            <div className="text-xs text-muted-foreground">TechCorp Inc.</div>
-                          </div>
-                        </div>
-                        <div className="text-sm font-semibold text-primary">95% Match</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="h-2 w-full rounded bg-primary/20"></div>
-                        <div className="h-2 w-3/4 rounded bg-primary/15"></div>
-                        <div className="h-2 w-1/2 rounded bg-primary/10"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="absolute -bottom-6 -right-6 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10"></div>
-              <div className="absolute -top-6 -left-6 w-40 h-40 bg-primary/10 rounded-full blur-3xl -z-10"></div>
-            </div>
+      <main className="container mx-auto px-4 py-16">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold mb-6 text-gray-900">
+            Connect Talent with <span className="text-primary">Opportunity</span>
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            AI-powered talent matching platform that bridges the gap between job seekers and recruiters, 
+            creating meaningful connections that drive career success.
+          </p>
+          <div className="space-x-4">
+            <Button size="lg" onClick={() => navigate('/auth')} className="animate-fade-in">
+              Get Started
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => navigate('/auth')}>
+              Learn More
+            </Button>
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="py-6 px-4 border-t">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-muted-foreground text-sm">
-              © {new Date().getFullYear()} TalentMatch.AI. All rights reserved.
-            </div>
-            <div className="flex space-x-4 mt-4 md:mt-0">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
-            </div>
-          </div>
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          <Card className="text-center hover:shadow-lg transition-shadow animate-slide-up">
+            <CardHeader>
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Target className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Smart Matching</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">AI-powered algorithms match candidates with perfect job opportunities based on skills and preferences.</p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center hover:shadow-lg transition-shadow animate-slide-up" style={{ animationDelay: '100ms' }}>
+            <CardHeader>
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Users className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Video Interviews</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">Seamless video interview experience with integrated scheduling and assessment tools.</p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center hover:shadow-lg transition-shadow animate-slide-up" style={{ animationDelay: '200ms' }}>
+            <CardHeader>
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Briefcase className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Skill Assessment</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">Comprehensive aptitude tests and skill evaluations to showcase candidate capabilities.</p>
+            </CardContent>
+          </Card>
+
+          <Card className="text-center hover:shadow-lg transition-shadow animate-slide-up" style={{ animationDelay: '300ms' }}>
+            <CardHeader>
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Zap className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Real-time Analytics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">Data-driven insights and analytics to optimize recruitment strategies and career growth.</p>
+            </CardContent>
+          </Card>
         </div>
-      </footer>
+
+        {/* CTA Section */}
+        <div className="text-center bg-white rounded-2xl p-12 shadow-lg">
+          <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Career Journey?</h2>
+          <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+            Join thousands of professionals who have found their perfect match through TalentMatch.AI
+          </p>
+          <Button size="lg" onClick={() => navigate('/auth')}>
+            Start Your Journey Today
+          </Button>
+        </div>
+      </main>
     </div>
   );
 };

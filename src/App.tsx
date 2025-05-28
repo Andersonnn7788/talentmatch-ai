@@ -4,7 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 // Employee Pages
@@ -29,26 +32,69 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          
-          {/* Employee Routes */}
-          <Route path="/employee/home" element={<EmployeeHome />} />
-          <Route path="/employee/profile" element={<EmployeeProfile />} />
-          <Route path="/employee/job-matches" element={<JobMatches />} />
-          <Route path="/employee/aptitude-tests" element={<EmployeeAptitudeTests />} />
-          <Route path="/employee/interviews" element={<EmployeeInterviews />} />
-          
-          {/* Recruiter Routes */}
-          <Route path="/recruiter/home" element={<RecruiterHome />} />
-          <Route path="/recruiter/profile" element={<RecruiterProfile />} />
-          <Route path="/recruiter/candidates" element={<Candidates />} />
-          <Route path="/recruiter/aptitude" element={<RecruiterAptitudeTests />} />
-          <Route path="/recruiter/interviews" element={<RecruiterInterviews />} />
-          
-          {/* Not Found */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Employee Routes */}
+            <Route path="/employee/home" element={
+              <ProtectedRoute userType="employee">
+                <EmployeeHome />
+              </ProtectedRoute>
+            } />
+            <Route path="/employee/profile" element={
+              <ProtectedRoute userType="employee">
+                <EmployeeProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/employee/job-matches" element={
+              <ProtectedRoute userType="employee">
+                <JobMatches />
+              </ProtectedRoute>
+            } />
+            <Route path="/employee/aptitude-tests" element={
+              <ProtectedRoute userType="employee">
+                <EmployeeAptitudeTests />
+              </ProtectedRoute>
+            } />
+            <Route path="/employee/interviews" element={
+              <ProtectedRoute userType="employee">
+                <EmployeeInterviews />
+              </ProtectedRoute>
+            } />
+            
+            {/* Recruiter Routes */}
+            <Route path="/recruiter/home" element={
+              <ProtectedRoute userType="recruiter">
+                <RecruiterHome />
+              </ProtectedRoute>
+            } />
+            <Route path="/recruiter/profile" element={
+              <ProtectedRoute userType="recruiter">
+                <RecruiterProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/recruiter/candidates" element={
+              <ProtectedRoute userType="recruiter">
+                <Candidates />
+              </ProtectedRoute>
+            } />
+            <Route path="/recruiter/aptitude" element={
+              <ProtectedRoute userType="recruiter">
+                <RecruiterAptitudeTests />
+              </ProtectedRoute>
+            } />
+            <Route path="/recruiter/interviews" element={
+              <ProtectedRoute userType="recruiter">
+                <RecruiterInterviews />
+              </ProtectedRoute>
+            } />
+            
+            {/* Not Found */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
