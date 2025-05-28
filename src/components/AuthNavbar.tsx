@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthNavbarProps {
   userType: 'employee' | 'recruiter';
@@ -16,21 +17,51 @@ const AuthNavbar = ({ userType }: AuthNavbarProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
   const handleSignOut = async () => {
     try {
-      await signOut();
+      console.log('🚪 Starting sign out process...');
+      
+      // Show loading state
+      toast({
+        title: "Signing out...",
+        description: "Please wait while we sign you out.",
+      });
+
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('❌ Sign out error:', error);
+        throw error;
+      }
+
+      console.log('✅ Sign out successful');
+      
+      // Clear any local storage if needed
+      localStorage.removeItem('supabase.auth.token');
+      
       toast({
         title: "Signed out successfully",
         description: "You have been logged out of your account.",
       });
+      
+      // Navigate to auth page
       navigate('/auth');
-    } catch (error) {
+      
+      // Optionally reload the page to ensure clean state
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('❌ Error during sign out:', error);
       toast({
         title: "Error signing out",
-        description: "There was a problem signing you out.",
+        description: error.message || "There was a problem signing you out.",
         variant: "destructive",
       });
+      
+      // Force navigation even on error
+      navigate('/auth');
     }
   };
 
