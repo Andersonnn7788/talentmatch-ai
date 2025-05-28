@@ -93,11 +93,7 @@ const InterviewChat = ({ interviewee }: InterviewChatProps) => {
   };
 
   const joinZoomMeeting = () => {
-    toast({
-      title: "Zoom Integration Required",
-      description: "Please provide your Zoom API credentials to enable video calls.",
-      duration: 5000
-    });
+    window.open('https://app.zoom.us/wc/82868055331/start?fromPWA=1&pwd=CNZzNwBGdaEgJ08MxEg1k25FsvD1ck.1', '_blank');
   };
 
   const formatTime = (date: Date) => {
@@ -112,7 +108,11 @@ const InterviewChat = ({ interviewee }: InterviewChatProps) => {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Avatar className="h-12 w-12 ring-2 ring-white/20">
-                <AvatarImage src={interviewee.profileImage} alt={interviewee.name} />
+                <AvatarImage 
+                  src={interviewee.profileImage} 
+                  alt={interviewee.name}
+                  className="object-cover"
+                />
                 <AvatarFallback className="bg-blue-500 text-white font-semibold">
                   {interviewee.name.charAt(0)}
                 </AvatarFallback>
