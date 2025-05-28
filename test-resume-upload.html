@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Resume Upload</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Resume Upload to Supabase</h1>
+    <div>
+        <h2>Database Schema Check</h2>
+        <button onclick="checkSchema()">Check if resume fields exist</button>
+        <div id="schema-result"></div>
+    </div>
+    
+    <div>
+        <h2>Storage Bucket Check</h2>
+        <button onclick="checkStorage()">Check if documents bucket exists</button>
+        <div id="storage-result"></div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const SUPABASE_URL = "https://rezbwjeatqupurpkodlu.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlemJ3amVhdHF1cHVycGtvZGx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0MjU5MTMsImV4cCI6MjA2NDAwMTkxM30.HWi2ATucNgdShOmeDNgizKWAtReNdGgdnHCQjOKAB2Q";
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function checkSchema() {
+            try {
+                // Try to query profiles table to see if resume fields exist
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('id, resume_url, resume_file_path')
+                    .limit(1);
+
+                const resultDiv = document.getElementById('schema-result');
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                    if (error.message.includes('column') && error.message.includes('does not exist')) {
+                        resultDiv.innerHTML += '<p>Resume fields need to be added to profiles table.</p>';
+                    }
+                } else {
+                    resultDiv.innerHTML = '<p style="color: green;">✅ Resume fields exist in profiles table!</p>';
+                }
+            } catch (err) {
+                document.getElementById('schema-result').innerHTML = `<p style="color: red;">Unexpected error: ${err.message}</p>`;
+            }
+        }
+
+        async function checkStorage() {
+            try {
+                // Try to list buckets
+                const { data, error } = await supabase.storage.listBuckets();
+
+                const resultDiv = document.getElementById('storage-result');
+                if (error) {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                } else {
+                    const documentsBucket = data.find(bucket => bucket.name === 'documents');
+                    if (documentsBucket) {
+                        resultDiv.innerHTML = '<p style="color: green;">✅ Documents bucket exists!</p>';
+                        resultDiv.innerHTML += `<p>Bucket details: ${JSON.stringify(documentsBucket, null, 2)}</p>`;
+                    } else {
+                        resultDiv.innerHTML = '<p style="color: orange;">⚠️ Documents bucket not found.</p>';
+                        resultDiv.innerHTML += `<p>Available buckets: ${data.map(b => b.name).join(', ')}</p>`;
+                    }
+                }
+            } catch (err) {
+                document.getElementById('storage-result').innerHTML = `<p style="color: red;">Unexpected error: ${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

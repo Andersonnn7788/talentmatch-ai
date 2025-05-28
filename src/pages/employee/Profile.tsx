@@ -58,10 +58,12 @@ const EmployeeProfile = () => {
             <Button variant="outline" className="flex items-center gap-2 animate-fade-in">
               <PencilLine size={16} />
               Edit Profile
-            </Button>
+            </Button>          </div>
+            <div className="grid grid-cols-1 gap-6">
+            <div>
+              <ProfileSection profile={sampleProfile} type="employee" />
+            </div>
           </div>
-          
-          <ProfileSection profile={sampleProfile} type="employee" />
         </div>
       </main>
     </div>

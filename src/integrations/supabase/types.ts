@@ -8,14 +8,15 @@ export type Json =
 
 export type Database = {
   public: {
-    Tables: {
-      profiles: {
+    Tables: {      profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
+          resume_url: string | null
+          resume_file_path: string | null
           updated_at: string
           user_type: string
         }
@@ -25,6 +26,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          resume_url?: string | null
+          resume_file_path?: string | null
           updated_at?: string
           user_type: string
         }
@@ -34,6 +37,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          resume_url?: string | null
+          resume_file_path?: string | null
           updated_at?: string
           user_type?: string
         }

@@ -1,0 +1,19 @@
+TEST RESUME
+
+John Doe
+Software Developer
+Email: john.doe@example.com
+Phone: (555) 123-4567
+
+EXPERIENCE:
+- 5 years of JavaScript development
+- React, Node.js, TypeScript
+- Database management (PostgreSQL, MongoDB)
+
+SKILLS:
+- Frontend: React, Vue.js, HTML, CSS
+- Backend: Node.js, Express, Python
+- Databases: PostgreSQL, MongoDB, Redis
+- Cloud: AWS, Google Cloud Platform
+
+This is a test resume file for upload functionality testing.

@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { User, BriefcaseBusiness, Search, Bell, Video, GraduationCap, SwitchCamera } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import AuthNavbar from '@/components/AuthNavbar';
 
 interface NavbarProps {
   userType: 'employee' | 'recruiter';
@@ -85,9 +86,7 @@ const Navbar = ({ userType }: NavbarProps) => {
                 </Link>
               );
             })}
-          </nav>
-
-          {/* Right Side */}
+          </nav>          {/* Right Side */}
           <div className="flex items-center space-x-4">
             <TooltipProvider>
               <Tooltip>
@@ -112,9 +111,7 @@ const Navbar = ({ userType }: NavbarProps) => {
               <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
             </Button>
             
-            <Button variant="ghost" size="icon" className="rounded-full bg-primary/10">
-              <User size={20} />
-            </Button>
+            <AuthNavbar userType={userType} />
           </div>
         </div>
       </div>

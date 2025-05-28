@@ -1,9 +1,11 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Upload, Sparkles } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { uploadResumeToSupabase } from '@/services/resumeUpload';
 
 interface JobSearchBarProps {
   onSearch: (searchParams: {
@@ -16,14 +18,54 @@ interface JobSearchBarProps {
 }
 
 const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [jobType, setJobType] = useState('');
   const [industry, setIndustry] = useState('');
   const [location, setLocation] = useState('');
-  
+  const [uploading, setUploading] = useState(false);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch({ query, jobType, industry, location });
+  };
+
+  const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+
+    try {
+      const result = await uploadResumeToSupabase(file, user.id);
+
+      if (result.success) {
+        toast({
+          title: "Resume uploaded successfully!",
+          description: "Your resume has been uploaded and will be used for AI job matching.",
+        });
+      } else {
+        toast({
+          title: "Upload failed",
+          description: result.error || "Failed to upload resume. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Reset the input so the same file can be selected again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   return (
@@ -94,19 +136,25 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
               </div>
             </div>
           </div>
-          
-          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-slate-200">
+            <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-slate-200">
             <div className="flex items-center gap-2 mb-4 sm:mb-0">
               <Button 
                 type="button" 
                 variant="outline" 
                 className="flex items-center gap-2"
-                onClick={() => document.getElementById('resume-upload')?.click()}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
               >
                 <Upload size={16} />
-                <span>Upload Resume</span>
-                <input id="resume-upload" type="file" className="hidden" accept=".pdf,.doc,.docx" />
+                <span>{uploading ? 'Uploading...' : 'Upload Resume'}</span>
               </Button>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                className="hidden" 
+                accept=".pdf,.doc,.docx"
+                onChange={handleResumeUpload}
+              />
               <span className="text-sm text-muted-foreground">PDF, DOC, DOCX (5MB max)</span>
             </div>
             
