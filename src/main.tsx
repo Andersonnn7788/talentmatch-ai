@@ -48,11 +48,10 @@ console.log('🚀 Starting TalentMatch AI...');
 try {
   const root = document.getElementById('root');
   if (!root) {
-    throw new Error('Root element not found');
-  }  createRoot(root).render(
+    throw new Error('Root element not found');  }  createRoot(root).render(
     React.createElement(React.StrictMode, null,
       React.createElement(ErrorBoundary, null,
-        React.createElement(AppFixed)
+        React.createElement(App)
       )
     )
   );
