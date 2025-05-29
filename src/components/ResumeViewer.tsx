@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -57,7 +58,7 @@ const ResumeViewer: React.FC<ResumeViewerProps> = ({
     setIsDialogOpen(true);
   };
 
-  const isImage = fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/);
+  const isImage = Boolean(fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/));
   const isPDF = fileName.toLowerCase().endsWith('.pdf');
 
   if (compact) {
