@@ -6,6 +6,9 @@ import { Search, Upload, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResumeToSupabase } from '@/services/resumeUpload';
+import { getAIJobMatches, getSampleJobListings, JobMatch } from '@/services/aiJobMatch';
+import { extractResumeText } from '@/services/resumeTextExtraction';
+import AIJobMatchesModal from './AIJobMatchesModal';
 
 interface JobSearchBarProps {
   onSearch: (searchParams: {
@@ -26,6 +29,12 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
   const [industry, setIndustry] = useState('');
   const [location, setLocation] = useState('');
   const [uploading, setUploading] = useState(false);
+  
+  // AI Matching states
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiMatches, setAiMatches] = useState<JobMatch[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | undefined>();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,116 +70,220 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       });
     } finally {
       setUploading(false);
-      // Reset the input so the same file can be selected again if needed
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
 
+  const handleAIMatch = async () => {
+    if (!user) {
+      toast({
+        title: "Please sign in",
+        description: "You need to be signed in to use AI job matching.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if user has uploaded a resume
+    // For demo purposes, we'll use sample data if no resume is found
+    let resumeText = '';
+    
+    try {
+      // In a real app, you'd fetch the user's profile to get their resume URL
+      // For now, we'll use demo text
+      const result = await extractResumeText('');
+      if (result.success && result.text) {
+        resumeText = result.text;
+      } else {
+        // Use demo resume text
+        resumeText = `
+Experienced Software Developer with 5+ years in web development.
+Skills: JavaScript, TypeScript, React, Node.js, Python, PostgreSQL, MongoDB, AWS
+Experience: Frontend development, full-stack applications, API design, team leadership
+Education: Computer Science degree from top university
+Interests: Modern web technologies, cloud computing, user experience design
+Looking for: Senior-level position with growth opportunities in a collaborative environment
+        `.trim();
+      }
+    } catch (error) {
+      console.error('Resume text extraction failed:', error);
+      resumeText = `
+Experienced Software Developer with 5+ years in web development.
+Skills: JavaScript, TypeScript, React, Node.js, Python, PostgreSQL, MongoDB, AWS
+Experience: Frontend development, full-stack applications, API design, team leadership
+Education: Computer Science degree from top university
+      `.trim();
+    }
+
+    setAiLoading(true);
+    setAiError(undefined);
+    setAiModalOpen(true);
+    onAIMatch(); // Call the original handler
+
+    try {
+      const jobListings = getSampleJobListings();
+      const matchResult = await getAIJobMatches(resumeText, jobListings);
+
+      if (matchResult.success && matchResult.matches) {
+        setAiMatches(matchResult.matches);
+        toast({
+          title: "AI matching complete!",
+          description: `Found ${matchResult.matches.length} great job matches for you.`,
+        });
+      } else {
+        setAiError(matchResult.error || 'Failed to get AI job matches');
+        toast({
+          title: "AI matching failed",
+          description: matchResult.error || "Failed to analyze your resume. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('AI matching error:', error);
+      setAiError('An unexpected error occurred during AI matching');
+      toast({
+        title: "AI matching failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleViewJob = (jobId: string) => {
+    // In a real app, navigate to the job details page
+    console.log('Viewing job:', jobId);
+    toast({
+      title: "Job details",
+      description: "This would navigate to the job details page.",
+    });
+    setAiModalOpen(false);
+  };
+
+  const closeAiModal = () => {
+    setAiModalOpen(false);
+    setAiMatches(null);
+    setAiError(undefined);
+  };
+
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <form onSubmit={handleSearch} className="glass rounded-xl p-6 shadow-sm border border-slate-200 bg-white/50 backdrop-blur-sm">
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div className="space-y-2">
-              <label htmlFor="jobType" className="text-sm font-medium">Type of Job</label>
-              <Select value={jobType} onValueChange={setJobType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select job type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full-time">Full-time</SelectItem>
-                  <SelectItem value="part-time">Part-time</SelectItem>
-                  <SelectItem value="contract">Contract</SelectItem>
-                  <SelectItem value="internship">Internship</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="industry" className="text-sm font-medium">Industry</label>
-              <Select value={industry} onValueChange={setIndustry}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="technology">Technology</SelectItem>
-                  <SelectItem value="healthcare">Healthcare</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                  <SelectItem value="education">Education</SelectItem>
-                  <SelectItem value="retail">Retail</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="location" className="text-sm font-medium">Location</label>
-              <Select value={location} onValueChange={setLocation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="remote">Remote</SelectItem>
-                  <SelectItem value="new-york">New York</SelectItem>
-                  <SelectItem value="san-francisco">San Francisco</SelectItem>
-                  <SelectItem value="london">London</SelectItem>
-                  <SelectItem value="tokyo">Tokyo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="search" className="text-sm font-medium">Search</label>
-              <div className="flex">
-                <Input
-                  id="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Job title, keyword, company..."
-                  className="rounded-r-none"
-                />
-                <Button type="submit" className="rounded-l-none bg-blue-500 hover:bg-blue-600">
-                  <Search size={18} />
-                </Button>
+    <>
+      <div className="w-full max-w-4xl mx-auto">
+        <form onSubmit={handleSearch} className="glass rounded-xl p-6 shadow-sm border border-slate-200 bg-white/50 backdrop-blur-sm">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="space-y-2">
+                <label htmlFor="jobType" className="text-sm font-medium">Type of Job</label>
+                <Select value={jobType} onValueChange={setJobType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select job type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="internship">Internship</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="industry" className="text-sm font-medium">Industry</label>
+                <Select value={industry} onValueChange={setIndustry}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="technology">Technology</SelectItem>
+                    <SelectItem value="healthcare">Healthcare</SelectItem>
+                    <SelectItem value="finance">Finance</SelectItem>
+                    <SelectItem value="education">Education</SelectItem>
+                    <SelectItem value="retail">Retail</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="location" className="text-sm font-medium">Location</label>
+                <Select value={location} onValueChange={setLocation}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="remote">Remote</SelectItem>
+                    <SelectItem value="new-york">New York</SelectItem>
+                    <SelectItem value="san-francisco">San Francisco</SelectItem>
+                    <SelectItem value="london">London</SelectItem>
+                    <SelectItem value="tokyo">Tokyo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="search" className="text-sm font-medium">Search</label>
+                <div className="flex">
+                  <Input
+                    id="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Job title, keyword, company..."
+                    className="rounded-r-none"
+                  />
+                  <Button type="submit" className="rounded-l-none bg-blue-500 hover:bg-blue-600">
+                    <Search size={18} />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
             <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-slate-200">
-            <div className="flex items-center gap-2 mb-4 sm:mb-0">
+              <div className="flex items-center gap-2 mb-4 sm:mb-0">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <Upload size={16} />
+                  <span>{uploading ? 'Uploading...' : 'Upload Resume'}</span>
+                </Button>
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  className="hidden" 
+                  accept=".pdf,.doc,.docx"
+                  onChange={handleResumeUpload}
+                />
+                <span className="text-sm text-muted-foreground">PDF, DOC, DOCX (5MB max)</span>
+              </div>
+              
               <Button 
                 type="button" 
-                variant="outline" 
-                className="flex items-center gap-2"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+                onClick={handleAIMatch} 
+                variant="default" 
+                className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2"
+                disabled={aiLoading}
               >
-                <Upload size={16} />
-                <span>{uploading ? 'Uploading...' : 'Upload Resume'}</span>
+                <Sparkles size={16} className={aiLoading ? "animate-spin" : "animate-float"} />
+                <span>{aiLoading ? 'Analyzing...' : 'AI Match'}</span>
               </Button>
-              <input 
-                ref={fileInputRef}
-                type="file" 
-                className="hidden" 
-                accept=".pdf,.doc,.docx"
-                onChange={handleResumeUpload}
-              />
-              <span className="text-sm text-muted-foreground">PDF, DOC, DOCX (5MB max)</span>
             </div>
-            
-            <Button 
-              type="button" 
-              onClick={onAIMatch} 
-              variant="default" 
-              className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2"
-            >
-              <Sparkles size={16} className="animate-float" />
-              <span>AI Match</span>
-            </Button>
           </div>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+
+      <AIJobMatchesModal
+        isOpen={aiModalOpen}
+        onClose={closeAiModal}
+        matches={aiMatches}
+        isLoading={aiLoading}
+        error={aiError}
+        onViewJob={handleViewJob}
+      />
+    </>
   );
 };
 
