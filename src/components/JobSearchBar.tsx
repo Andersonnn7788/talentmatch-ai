@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
   const [industry, setIndustry] = useState('');
   const [location, setLocation] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [lastUploadedResumeUrl, setLastUploadedResumeUrl] = useState<string | null>(null);
   
   // AI Matching states
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -49,14 +51,19 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
     setUploading(true);
 
     try {
+      console.log('📎 Starting resume upload for file:', file.name);
       const result = await uploadResumeToSupabase(file, user.id);
 
-      if (result.success) {
+      if (result.success && result.url) {
+        setLastUploadedResumeUrl(result.url);
+        console.log('✅ Resume uploaded successfully to:', result.url);
+        
         toast({
           title: "Resume uploaded successfully!",
-          description: "Your resume has been uploaded and will be used for AI job matching.",
+          description: "Your resume has been uploaded and is ready for AI analysis.",
         });
       } else {
+        console.error('❌ Resume upload failed:', result.error);
         toast({
           title: "Upload failed",
           description: result.error || "Failed to upload resume. Please try again.",
@@ -64,6 +71,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
         });
       }
     } catch (error) {
+      console.error('❌ Resume upload error:', error);
       toast({
         title: "Upload failed",
         description: "An unexpected error occurred. Please try again.",
@@ -87,6 +95,15 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       return;
     }
 
+    if (!lastUploadedResumeUrl) {
+      toast({
+        title: "Upload resume first",
+        description: "Please upload your resume before using AI job matching.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setAiLoading(true);
     setAiError(undefined);
     setAiAnalysis(null);
@@ -95,88 +112,38 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
     onAIMatch(); // Call the original handler
 
     try {
-      // In a real app, you'd fetch the user's uploaded resume URL from their profile
-      // For demo purposes, we'll check if they have a resume or use demo data
-      let resumeText = '';
+      console.log('🔍 Starting AI job matching with uploaded resume:', lastUploadedResumeUrl);
       
-      // Try to get the user's actual resume if they uploaded one
-      // This would typically come from the user's profile in the database
-      const demoResumeUrl = 'https://example.com/demo-resume.pdf'; // Replace with actual resume URL
+      // Extract text from the uploaded resume
+      const extractResult = await extractResumeText(lastUploadedResumeUrl);
       
-      console.log('🔍 Extracting text from resume...');
-      const extractResult = await extractResumeText(demoResumeUrl);
-      
-      if (extractResult.success && extractResult.text) {
-        resumeText = extractResult.text;
-        console.log('✅ Resume text extracted successfully');
-      } else {
-        console.log('⚠️ Using fallback demo resume text');
-        // Fallback to demo text if extraction fails
-        resumeText = `
-ALEX THOMPSON - Software Engineer
-
-PROFESSIONAL SUMMARY:
-Experienced Software Engineer with 5+ years in full-stack development, specializing in React, TypeScript, and cloud technologies. Proven track record of delivering scalable applications and leading development teams.
-
-TECHNICAL SKILLS:
-• Frontend: React, TypeScript, JavaScript, HTML5, CSS3, Tailwind CSS, Next.js
-• Backend: Node.js, Express.js, Python, Django, REST APIs, GraphQL
-• Databases: PostgreSQL, MongoDB, Redis, MySQL
-• Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD, GitHub Actions
-• Tools: Git, Webpack, Jest, React Testing Library, Figma
-
-EXPERIENCE:
-Senior Frontend Developer | TechFlow Solutions (2021 - Present)
-• Led development of React-based dashboard serving 50K+ users daily
-• Implemented TypeScript across codebase, reducing bugs by 40%
-• Mentored team of 3 junior developers and established coding standards
-• Built real-time features using WebSocket and modern state management
-
-Full Stack Developer | Digital Innovations (2019 - 2021)
-• Developed and maintained Node.js microservices handling 2M+ requests daily
-• Created responsive web applications using React and modern CSS frameworks
-• Collaborated with UX team to implement pixel-perfect designs and animations
-• Optimized database queries and API performance for better user experience
-
-Frontend Developer | StartupLab (2018 - 2019)
-• Built interactive web applications using React and vanilla JavaScript
-• Implemented responsive design principles for mobile-first approach
-• Worked with designers to create component libraries and design systems
-• Contributed to open-source projects and internal development tools
-
-EDUCATION:
-Bachelor of Science in Computer Science | State University (2018)
-Relevant Coursework: Data Structures, Algorithms, Software Engineering, Web Development
-
-PROJECTS:
-• E-Commerce Platform: Full-stack application with payment processing and admin dashboard
-• Task Management App: Collaborative tool with real-time updates and team features  
-• Weather Dashboard: React application with geolocation and data visualization
-
-CERTIFICATIONS:
-• AWS Certified Solutions Architect (2022)
-• React Developer Certification (2021)
-
-INTERESTS:
-Modern web technologies, cloud computing, user experience design, team leadership, open source contributions
-        `.trim();
+      if (!extractResult.success || !extractResult.text) {
+        throw new Error(extractResult.error || 'Failed to extract text from resume');
       }
+
+      const resumeText = extractResult.text;
+      console.log('✅ Resume text extracted, length:', resumeText.length);
+      console.log('📄 Resume content preview:', resumeText.substring(0, 200) + '...');
 
       // Generate personalized job listings based on resume
       const jobListings = generatePersonalizedJobListings(resumeText);
-      console.log('🎯 Getting AI job matches with extracted resume text...');
+      console.log('🎯 Generated personalized job listings:', jobListings.length);
       
       const matchResult = await getAIJobMatches(resumeText, jobListings);
 
       if (matchResult.success && matchResult.matches) {
         setAiMatches(matchResult.matches);
         setAiAnalysis(matchResult.analysis || null);
+        console.log('✅ AI analysis complete:', matchResult);
+        
         toast({
           title: "AI analysis complete!",
           description: `Found ${matchResult.matches.length} great job matches based on your resume.`,
         });
       } else {
         setAiError(matchResult.error || 'Failed to get AI job matches');
+        console.error('❌ AI matching failed:', matchResult.error);
+        
         toast({
           title: "AI matching failed",
           description: matchResult.error || "Failed to analyze your resume. Please try again.",
@@ -184,7 +151,7 @@ Modern web technologies, cloud computing, user experience design, team leadershi
         });
       }
     } catch (error) {
-      console.error('AI matching error:', error);
+      console.error('❌ AI matching error:', error);
       setAiError('An unexpected error occurred during AI matching');
       toast({
         title: "AI matching failed",
@@ -298,10 +265,12 @@ Modern web technologies, cloud computing, user experience design, team leadershi
                   ref={fileInputRef}
                   type="file" 
                   className="hidden" 
-                  accept=".pdf,.doc,.docx"
+                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                   onChange={handleResumeUpload}
                 />
-                <span className="text-sm text-muted-foreground">PDF, DOC, DOCX (5MB max)</span>
+                <span className="text-sm text-muted-foreground">
+                  {lastUploadedResumeUrl ? '✅ Resume uploaded' : 'PDF, DOC, DOCX, images (5MB max)'}
+                </span>
               </div>
               
               <Button 
@@ -309,7 +278,7 @@ Modern web technologies, cloud computing, user experience design, team leadershi
                 onClick={handleAIMatch} 
                 variant="default" 
                 className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2"
-                disabled={aiLoading}
+                disabled={aiLoading || !lastUploadedResumeUrl}
               >
                 <Sparkles size={16} className={aiLoading ? "animate-spin" : "animate-float"} />
                 <span>{aiLoading ? 'Analyzing...' : 'AI Match'}</span>

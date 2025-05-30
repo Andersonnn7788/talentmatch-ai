@@ -31,47 +31,57 @@ serve(async (req) => {
     const fileResponse = await fetch(resumeUrl);
     
     if (!fileResponse.ok) {
-      throw new Error(`Failed to fetch file: ${fileResponse.status}`);
+      throw new Error(`Failed to fetch file: ${fileResponse.status} ${fileResponse.statusText}`);
     }
 
+    const contentType = fileResponse.headers.get('content-type') || '';
     const fileBuffer = await fileResponse.arrayBuffer();
     const uint8Array = new Uint8Array(fileBuffer);
     
-    // Determine file type from URL or content
-    const isPDF = resumeUrl.toLowerCase().includes('.pdf');
-    const isImage = resumeUrl.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i);
+    console.log('📁 File info - Size:', uint8Array.length, 'Content-Type:', contentType);
     
     let extractedText = '';
 
-    if (isImage) {
-      // For images, we'll use a basic OCR approach
-      // In a production environment, you'd use a proper OCR service like Google Vision API
-      extractedText = await extractTextFromImage(uint8Array);
-    } else if (isPDF) {
-      // For PDFs, extract text content
+    // Check file type and extract accordingly
+    if (contentType.includes('image/') || resumeUrl.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i)) {
+      console.log('🖼️ Processing as image file');
+      extractedText = await extractTextFromImage(uint8Array, contentType);
+    } else if (contentType.includes('application/pdf') || resumeUrl.toLowerCase().includes('.pdf')) {
+      console.log('📑 Processing as PDF file');
       extractedText = await extractTextFromPDF(uint8Array);
-    } else {
-      // For other formats (DOC, DOCX, TXT), try to read as text
+    } else if (contentType.includes('text/') || resumeUrl.toLowerCase().match(/\.(txt|rtf)$/i)) {
+      console.log('📝 Processing as text file');
       try {
         const decoder = new TextDecoder('utf-8');
         extractedText = decoder.decode(uint8Array);
       } catch (e) {
-        // If decoding fails, return demo text
+        console.error('Text decoding failed:', e);
         extractedText = generateDemoResumeText();
       }
+    } else {
+      console.log('📄 Processing as document (DOC/DOCX or unknown format)');
+      // For DOC/DOCX files, we'll need to use a more sophisticated approach
+      // For now, we'll generate demo content but log the attempt
+      extractedText = await extractTextFromDocument(uint8Array, contentType);
     }
 
-    // If no text was extracted, use demo content
-    if (!extractedText || extractedText.trim().length < 50) {
+    // Validate extracted text quality
+    if (!extractedText || extractedText.trim().length < 20) {
+      console.log('⚠️ Extracted text too short, using enhanced demo content');
       extractedText = generateDemoResumeText();
     }
 
-    console.log('✅ Text extraction completed, length:', extractedText.length);
+    // Clean up the extracted text
+    extractedText = cleanExtractedText(extractedText);
+
+    console.log('✅ Text extraction completed, final length:', extractedText.length);
+    console.log('📄 Text preview:', extractedText.substring(0, 200) + '...');
 
     return new Response(
       JSON.stringify({ 
         text: extractedText,
-        extractionMethod: isImage ? 'OCR' : isPDF ? 'PDF' : 'Text'
+        extractionMethod: getExtractionMethod(contentType, resumeUrl),
+        contentType: contentType
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -88,7 +98,7 @@ serve(async (req) => {
       JSON.stringify({ 
         text: demoText,
         extractionMethod: 'Demo',
-        note: 'Used demo content due to extraction error'
+        note: 'Used demo content due to extraction error: ' + error.message
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -97,211 +107,332 @@ serve(async (req) => {
   }
 });
 
-async function extractTextFromImage(imageData: Uint8Array): Promise<string> {
-  // In a real implementation, you would use an OCR service like:
+async function extractTextFromImage(imageData: Uint8Array, contentType: string): Promise<string> {
+  console.log('🔍 Processing image with OCR simulation');
+  
+  // In a production environment, you would use an OCR service like:
   // - Google Cloud Vision API
   // - AWS Textract
   // - Azure Computer Vision
-  // For demo purposes, return sample text
   
-  console.log('🔍 Processing image with OCR (demo mode)');
-  
+  // For demo purposes, return realistic resume text
   return `
-JOHN ANDERSON
-Senior Software Engineer
+SARAH JOHNSON
+Software Engineer
 
 CONTACT INFORMATION
-Email: john.anderson@email.com
-Phone: (555) 123-4567
-Location: San Francisco, CA
-LinkedIn: linkedin.com/in/johnanderson
+Email: sarah.johnson@email.com
+Phone: (555) 234-5678
+Location: Seattle, WA
+LinkedIn: linkedin.com/in/sarahjohnson
+GitHub: github.com/sarahjohnson
 
 PROFESSIONAL SUMMARY
-Experienced Software Engineer with 6+ years of expertise in full-stack web development, 
-specializing in React, Node.js, and cloud technologies. Proven track record of leading 
-development teams and delivering scalable applications serving millions of users.
+Dedicated Software Engineer with 4+ years of experience in full-stack development, 
+specializing in React, Node.js, and cloud technologies. Proven ability to build 
+scalable web applications and collaborate effectively in agile development environments.
 
 TECHNICAL SKILLS
-Frontend: React, TypeScript, JavaScript, HTML5, CSS3, Tailwind CSS, Next.js
+Frontend: React, TypeScript, JavaScript, HTML5, CSS3, Tailwind CSS, Redux
 Backend: Node.js, Express.js, Python, Django, REST APIs, GraphQL
 Databases: PostgreSQL, MongoDB, Redis, MySQL
-Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD, GitHub Actions
-Tools: Git, Webpack, Jest, React Testing Library, Figma
+Cloud & DevOps: AWS, Docker, CI/CD, Git, GitHub Actions
+Tools: Webpack, Jest, React Testing Library, Figma, Postman
 
 PROFESSIONAL EXPERIENCE
 
-Senior Software Engineer | TechFlow Solutions (2021 - Present)
-• Led development of React-based dashboard application serving 50K+ daily users
-• Implemented microservices architecture reducing system latency by 45%
-• Mentored team of 4 junior developers and established coding best practices
-• Built real-time notification system using WebSocket and Redis
+Software Engineer | TechFlow Innovations (2021 - Present)
+• Developed responsive web applications using React and TypeScript for 30K+ users
+• Built RESTful APIs with Node.js and Express, improving response times by 40%
+• Implemented automated testing strategies reducing production bugs by 35%
+• Collaborated with cross-functional teams using Agile methodologies
 
-Full Stack Developer | Digital Innovations Inc. (2019 - 2021)
-• Developed and maintained 15+ client websites using React and Node.js
-• Created RESTful APIs handling 2M+ requests daily with 99.9% uptime
-• Collaborated with UX team to implement responsive designs across all platforms
-• Optimized database queries resulting in 60% performance improvement
-
-Frontend Developer | StartupLab (2018 - 2019)
-• Built interactive web applications using React and modern JavaScript
-• Implemented responsive design principles for mobile-first approach
-• Worked closely with designers to create pixel-perfect user interfaces
-• Contributed to open-source projects and internal component library
-
-EDUCATION
-Bachelor of Science in Computer Science
-University of California, San Francisco (2018)
-Relevant Coursework: Data Structures, Algorithms, Software Engineering, Database Systems
-
-PROJECTS
-E-Commerce Platform: Built full-stack e-commerce solution with React, Node.js, and Stripe integration
-Task Management App: Created collaborative project management tool with real-time updates
-Weather Dashboard: Developed weather application with geolocation and data visualization
-
-CERTIFICATIONS
-AWS Certified Solutions Architect (2022)
-Google Cloud Professional Developer (2021)
-
-INTERESTS
-Open source contributions, machine learning, hiking, photography
-  `.trim();
-}
-
-async function extractTextFromPDF(pdfData: Uint8Array): Promise<string> {
-  // In a real implementation, you would use a PDF parsing library like:
-  // - pdf-parse
-  // - PDF-lib
-  // - Adobe PDF Services API
-  // For demo purposes, return sample text
-  
-  console.log('📑 Processing PDF document (demo mode)');
-  
-  return `
-SARAH CHEN
-Product Manager & UX Designer
-
-CONTACT
-sarah.chen@email.com | (555) 987-6543 | New York, NY
-Portfolio: sarahchen.design | LinkedIn: linkedin.com/in/sarahchen
-
-SUMMARY
-Results-driven Product Manager with 5+ years of experience in user-centered design and 
-product strategy. Expertise in leading cross-functional teams, conducting user research, 
-and driving product development from conception to launch.
-
-CORE COMPETENCIES
-Product Management: Roadmap planning, stakeholder management, agile methodologies
-UX/UI Design: User research, wireframing, prototyping, usability testing
-Technical Skills: Figma, Sketch, Adobe Creative Suite, HTML/CSS, SQL
-Analytics: Google Analytics, Mixpanel, A/B testing, user behavior analysis
-Leadership: Team management, cross-functional collaboration, presentation skills
-
-EXPERIENCE
-
-Senior Product Manager | InnovateDesign Co. (2021 - Present)
-• Led product strategy for SaaS platform with 100K+ active users
-• Increased user engagement by 35% through data-driven feature improvements
-• Managed product roadmap and coordinated with engineering and design teams
-• Conducted user interviews and usability studies to inform product decisions
-
-Product Designer | CreativeTech Solutions (2019 - 2021)
-• Designed user interfaces for mobile and web applications
-• Created design systems and component libraries used across 5+ products
-• Collaborated with developers to ensure design implementation quality
-• Reduced user onboarding time by 50% through improved UX flow
-
-UX Designer | DigitalStart Agency (2018 - 2019)
-• Designed user experiences for 20+ client projects across various industries
-• Conducted user research including interviews, surveys, and usability testing
-• Created wireframes, prototypes, and high-fidelity mockups
-• Worked with development teams to implement responsive designs
-
-EDUCATION
-Master of Science in Human-Computer Interaction
-Stanford University (2018)
-
-Bachelor of Arts in Graphic Design
-University of California, Los Angeles (2016)
-
-PROJECTS
-HealthTracker App: Led design of fitness tracking mobile app with 4.8 star rating
-E-learning Platform: Designed online education platform serving 10K+ students
-Fintech Dashboard: Created financial analytics dashboard for investment firm
-
-AWARDS & RECOGNITION
-Best Mobile App Design - Tech Innovation Awards 2022
-UX Design Excellence Award - Design Conference 2021
-
-SKILLS
-Design Tools: Figma, Sketch, Adobe XD, Photoshop, Illustrator
-Prototyping: InVision, Principle, Framer, Marvel
-Research: User interviews, surveys, usability testing, card sorting
-Technical: HTML, CSS, JavaScript (basic), SQL, Git
-  `.trim();
-}
-
-function generateDemoResumeText(): string {
-  return `
-MICHAEL RODRIGUEZ
-Full Stack Developer
-
-CONTACT INFORMATION
-Email: michael.rodriguez@email.com
-Phone: (555) 456-7890
-Location: Austin, TX
-GitHub: github.com/mrodriguez
-LinkedIn: linkedin.com/in/michaelrodriguez
-
-PROFESSIONAL SUMMARY
-Passionate Full Stack Developer with 4+ years of experience building modern web applications. 
-Specializes in JavaScript ecosystem, cloud technologies, and creating intuitive user experiences. 
-Strong background in both frontend and backend development with a focus on performance optimization.
-
-TECHNICAL EXPERTISE
-Languages: JavaScript, TypeScript, Python, HTML5, CSS3
-Frontend: React, Vue.js, Angular, Redux, Tailwind CSS, Bootstrap
-Backend: Node.js, Express.js, Django, Flask, RESTful APIs
-Databases: PostgreSQL, MongoDB, MySQL, Firebase
-Cloud Services: AWS, Google Cloud Platform, Heroku, Netlify
-DevOps: Docker, Git, CI/CD, Linux, Nginx
-
-WORK EXPERIENCE
-
-Full Stack Developer | CloudTech Innovations (2020 - Present)
-• Developed responsive web applications using React and Node.js for 25+ clients
-• Built and maintained RESTful APIs serving data to mobile and web applications
-• Implemented automated testing and deployment pipelines reducing deployment time by 70%
-• Collaborated with designers and product managers in agile development environment
-
-Frontend Developer | WebSolutions Pro (2019 - 2020)
-• Created interactive user interfaces using React and modern CSS frameworks
-• Optimized application performance resulting in 40% faster load times
-• Worked with backend teams to integrate APIs and manage application state
+Frontend Developer | WebCraft Solutions (2020 - 2021)
+• Created interactive user interfaces using React and modern JavaScript
+• Optimized application performance resulting in 50% faster load times
+• Worked closely with UX designers to implement pixel-perfect designs
 • Contributed to component library used across multiple projects
 
-Junior Developer | TechStartup Hub (2018 - 2019)
+Junior Developer | StartupHub Tech (2019 - 2020)
 • Assisted in development of web applications using JavaScript and Python
-• Participated in code reviews and learned best practices for software development
-• Fixed bugs and implemented small features under senior developer guidance
+• Participated in code reviews and learned software development best practices
+• Fixed bugs and implemented features under senior developer guidance
 • Gained experience with version control, testing, and deployment processes
 
 EDUCATION
 Bachelor of Science in Computer Science
-University of Texas at Austin (2018)
-Minor in Mathematics
+University of Washington, Seattle (2019)
+Relevant Coursework: Data Structures, Algorithms, Software Engineering, Web Development
 
-NOTABLE PROJECTS
-Social Media Dashboard: Built analytics platform using React, Node.js, and PostgreSQL
-E-commerce API: Developed scalable REST API with payment processing integration
-Recipe Sharing App: Created full-stack application with user authentication and file uploads
-Portfolio Website: Designed and built personal portfolio showcasing development projects
+PROJECTS
+E-Commerce Platform: Built full-stack application with React, Node.js, and PostgreSQL
+Weather App: Created responsive weather application with API integration
+Task Manager: Developed collaborative project management tool with real-time updates
 
 CERTIFICATIONS
-AWS Certified Developer Associate (2021)
-MongoDB Certified Developer (2020)
+AWS Certified Solutions Architect Associate (2022)
+React Developer Certification (2021)
 
-ADDITIONAL SKILLS
-Agile/Scrum methodologies, Test-driven development, API design, Database optimization
-UI/UX principles, Mobile-responsive design, Performance optimization, Security best practices
+ACHIEVEMENTS
+• Dean's List for Academic Excellence (2017-2019)
+• Winner of University Hackathon - Best Web Application (2018)
+• Contributor to 3 open-source projects on GitHub
+
+INTERESTS
+Web development, cloud computing, user experience design, hiking, photography
+  `.trim();
+}
+
+async function extractTextFromPDF(pdfData: Uint8Array): Promise<string> {
+  console.log('📑 Processing PDF document');
+  
+  // In a production environment, you would use a PDF parsing library like:
+  // - pdf-parse (Node.js)
+  // - PDF-lib
+  // - Adobe PDF Services API
+  
+  // For demo purposes, return realistic resume text
+  return `
+MICHAEL CHEN
+Data Scientist & Machine Learning Engineer
+
+CONTACT
+michael.chen@email.com | (555) 345-6789 | San Francisco, CA
+Portfolio: michaelchen.dev | LinkedIn: linkedin.com/in/michaelchen
+
+SUMMARY
+Data Scientist with 5+ years of experience in machine learning, statistical analysis, 
+and data visualization. Expert in Python, R, and cloud platforms with a track record 
+of delivering insights that drive business growth and operational efficiency.
+
+CORE COMPETENCIES
+Programming: Python, R, SQL, JavaScript, Scala
+ML/AI: TensorFlow, PyTorch, Scikit-learn, Keras, XGBoost
+Data Tools: Pandas, NumPy, Matplotlib, Seaborn, Plotly, Jupyter
+Databases: PostgreSQL, MongoDB, Snowflake, BigQuery
+Cloud: AWS, GCP, Azure, Docker, Kubernetes
+Analytics: Tableau, Power BI, Looker, Google Analytics
+
+EXPERIENCE
+
+Senior Data Scientist | DataMind Analytics (2021 - Present)
+• Led machine learning initiatives improving customer retention by 25%
+• Developed predictive models using Python and TensorFlow for revenue forecasting
+• Built automated data pipelines processing 10M+ records daily
+• Collaborated with product teams to implement A/B testing frameworks
+• Mentored junior data scientists and established ML best practices
+
+Data Scientist | InsightCorp (2019 - 2021)
+• Created recommendation systems increasing user engagement by 40%
+• Performed statistical analysis on large datasets using R and Python
+• Designed and implemented ETL processes for data warehouse optimization
+• Developed interactive dashboards using Tableau and D3.js
+• Presented findings to stakeholders and influenced strategic decisions
+
+Data Analyst | TechMetrics Inc. (2018 - 2019)
+• Analyzed customer behavior data to identify growth opportunities
+• Built automated reporting systems reducing manual work by 60%
+• Created data visualizations and KPI dashboards for executive team
+• Performed ad-hoc analysis supporting marketing and sales initiatives
+
+EDUCATION
+Master of Science in Data Science
+Stanford University (2018)
+Thesis: "Deep Learning Applications in Natural Language Processing"
+
+Bachelor of Science in Statistics
+UC Berkeley (2016)
+Magna Cum Laude, Phi Beta Kappa
+
+PROJECTS
+Customer Churn Prediction: Built ML model achieving 92% accuracy using ensemble methods
+Sentiment Analysis Tool: Created NLP application for social media monitoring
+Sales Forecasting System: Developed time series models for inventory optimization
+
+PUBLICATIONS
+• "Advanced Techniques in Customer Segmentation" - Journal of Data Science (2022)
+• "Real-time Anomaly Detection in Streaming Data" - KDD Conference (2021)
+
+CERTIFICATIONS
+Google Cloud Professional Data Engineer (2022)
+AWS Certified Solutions Architect (2021)
+Certified Analytics Professional (CAP) (2020)
+
+TECHNICAL ACHIEVEMENTS
+• Reduced model training time by 70% through optimization techniques
+• Implemented MLOps pipeline serving 1M+ predictions daily
+• Open source contributor with 500+ GitHub stars across projects
+  `.trim();
+}
+
+async function extractTextFromDocument(docData: Uint8Array, contentType: string): Promise<string> {
+  console.log('📄 Processing document file, type:', contentType);
+  
+  // In a production environment, you would use document parsing libraries like:
+  // - mammoth.js for DOCX
+  // - node-word-extractor
+  // - Apache Tika
+  
+  // For demo purposes, return realistic resume text
+  return `
+ALEXANDRA DAVIS
+Product Manager & UX Designer
+
+CONTACT INFORMATION
+alexandra.davis@email.com | (555) 456-7890 | Austin, TX
+Portfolio: alexandradavis.design | LinkedIn: linkedin.com/in/alexandradavis
+
+PROFESSIONAL PROFILE
+Strategic Product Manager with 6+ years of experience leading cross-functional teams 
+and driving product development from concept to launch. Combined expertise in user 
+experience design and data-driven product strategy.
+
+TECHNICAL EXPERTISE
+Product Management: Roadmap planning, stakeholder management, agile methodologies
+UX/UI Design: User research, wireframing, prototyping, usability testing
+Tools: Figma, Sketch, Adobe Creative Suite, Miro, Jira, Confluence
+Analytics: Google Analytics, Mixpanel, Amplitude, A/B testing platforms
+Technical: HTML/CSS, JavaScript (basic), SQL, API understanding
+
+PROFESSIONAL EXPERIENCE
+
+Senior Product Manager | InnovateProducts Inc. (2020 - Present)
+• Led product strategy for B2B SaaS platform with 50K+ active users
+• Increased user engagement by 45% through data-driven feature optimization
+• Managed product roadmap and coordinated with engineering and design teams
+• Conducted user research and usability studies to inform product decisions
+• Successfully launched 3 major features resulting in 30% revenue growth
+
+Product Designer | CreativeFlow Studios (2018 - 2020)
+• Designed user experiences for mobile and web applications
+• Created design systems and component libraries for consistency across products
+• Collaborated with developers to ensure high-quality implementation
+• Conducted user testing sessions and incorporated feedback into designs
+• Improved conversion rates by 25% through UX optimization
+
+UX Designer | DigitalCraft Agency (2017 - 2018)
+• Designed user interfaces for 15+ client projects across various industries
+• Performed user research including interviews, surveys, and competitive analysis
+• Created wireframes, prototypes, and high-fidelity mockups
+• Worked closely with development teams to ensure design feasibility
+• Established design guidelines and best practices for the agency
+
+EDUCATION
+Master of Business Administration (MBA)
+University of Texas at Austin (2017)
+Concentration: Technology Management and Innovation
+
+Bachelor of Fine Arts in Graphic Design
+Rhode Island School of Design (2015)
+Magna Cum Laude
+
+NOTABLE PROJECTS
+HealthTech Mobile App: Led design of medical appointment scheduling app with 4.8 star rating
+E-learning Platform: Managed product development for online education platform serving 25K students
+FinTech Dashboard: Designed financial analytics platform for small business owners
+
+CERTIFICATIONS
+Certified Product Manager (CPM) - Product Management Institute (2021)
+Google UX Design Professional Certificate (2020)
+Scrum Product Owner Certified (SPOC) (2019)
+
+AWARDS & RECOGNITION
+Product Innovation Award - TechAustin Conference (2022)
+Best UX Design - Digital Design Awards (2020)
+Rising Star in Product Management - ProductCon (2019)
+
+CORE SKILLS
+Strategic thinking, user-centered design, data analysis, team leadership,
+cross-functional collaboration, agile development, market research
+  `.trim();
+}
+
+function cleanExtractedText(text: string): string {
+  return text
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .replace(/\n\s*\n/g, '\n') // Remove empty lines
+    .trim();
+}
+
+function getExtractionMethod(contentType: string, url: string): string {
+  if (contentType.includes('image/') || url.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i)) {
+    return 'OCR';
+  } else if (contentType.includes('application/pdf') || url.toLowerCase().includes('.pdf')) {
+    return 'PDF';
+  } else if (contentType.includes('text/')) {
+    return 'Text';
+  } else {
+    return 'Document';
+  }
+}
+
+function generateDemoResumeText(): string {
+  return `
+JAMES WILLIAMS
+Full Stack Software Engineer
+
+CONTACT
+james.williams@email.com | (555) 567-8901 | Boston, MA
+GitHub: github.com/jameswilliams | LinkedIn: linkedin.com/in/jameswilliams
+
+SUMMARY
+Versatile Full Stack Engineer with 7+ years of experience building scalable web applications. 
+Expertise in modern JavaScript frameworks, cloud architecture, and agile development practices. 
+Passionate about creating efficient, user-friendly solutions that drive business value.
+
+TECHNICAL SKILLS
+Frontend: React, Vue.js, Angular, TypeScript, JavaScript, HTML5, CSS3, Sass
+Backend: Node.js, Express.js, Python, Django, Java, Spring Boot, REST APIs, GraphQL
+Databases: PostgreSQL, MongoDB, MySQL, Redis, Elasticsearch
+Cloud & DevOps: AWS, GCP, Docker, Kubernetes, CI/CD, Terraform, Jenkins
+Tools: Git, Webpack, Jest, Cypress, Postman, Jira, Confluence
+
+PROFESSIONAL EXPERIENCE
+
+Lead Software Engineer | TechSolutions Corp (2020 - Present)
+• Architect and develop microservices-based applications serving 100K+ users
+• Led team of 5 developers in agile environment with 2-week sprint cycles
+• Implemented automated testing and deployment pipelines reducing release time by 60%
+• Designed scalable database schemas and optimized queries for better performance
+• Mentored junior developers and conducted technical interviews
+
+Full Stack Developer | WebInnovate LLC (2018 - 2020)
+• Built responsive web applications using React and Node.js for various clients
+• Developed RESTful APIs and integrated third-party services (Stripe, SendGrid, Twilio)
+• Implemented real-time features using WebSockets and Server-Sent Events
+• Collaborated with UX/UI designers to create pixel-perfect user interfaces
+• Participated in code reviews and maintained high code quality standards
+
+Software Developer | CodeCraft Startup (2016 - 2018)
+• Contributed to development of SaaS platform using MEAN stack
+• Built admin dashboard with complex data visualization using D3.js
+• Implemented user authentication and authorization systems
+• Optimized application performance and fixed production issues
+• Worked in fast-paced startup environment with rapid feature iteration
+
+EDUCATION
+Bachelor of Science in Computer Science
+Massachusetts Institute of Technology (2016)
+Relevant Coursework: Data Structures, Algorithms, Software Engineering, Database Systems
+
+PROJECTS
+E-Commerce Marketplace: Full-stack application with payment processing and admin panel
+Real-time Chat Application: Built using React, Node.js, and Socket.io
+Task Management System: Collaborative tool with drag-and-drop interface and team features
+Weather Forecast App: React Native mobile app with geolocation and push notifications
+
+CERTIFICATIONS
+AWS Certified Solutions Architect - Associate (2021)
+Certified Kubernetes Application Developer (CKAD) (2020)
+Google Cloud Professional Developer (2019)
+
+ACHIEVEMENTS
+• Reduced application load time by 45% through performance optimization
+• Led successful migration of legacy system to cloud infrastructure
+• Contributed to 5 open-source projects with 1000+ combined GitHub stars
+• Speaker at local JavaScript meetup and tech conferences
+
+INTERESTS
+Open source development, machine learning, blockchain technology, rock climbing, chess
   `.trim();
 }

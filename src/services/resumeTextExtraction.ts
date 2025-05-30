@@ -5,6 +5,8 @@ export interface ResumeTextResult {
   success: boolean;
   text?: string;
   error?: string;
+  extractionMethod?: string;
+  contentType?: string;
 }
 
 export const extractResumeText = async (resumeUrl: string): Promise<ResumeTextResult> => {
@@ -34,16 +36,24 @@ export const extractResumeText = async (resumeUrl: string): Promise<ResumeTextRe
     }
 
     console.log('✅ Resume text extracted successfully');
+    console.log('📊 Extraction details:', {
+      method: data.extractionMethod,
+      contentType: data.contentType,
+      textLength: data.text.length
+    });
+
     return {
       success: true,
-      text: data.text
+      text: data.text,
+      extractionMethod: data.extractionMethod,
+      contentType: data.contentType
     };
     
   } catch (error) {
     console.error('❌ Resume text extraction error:', error);
     return {
       success: false,
-      error: 'Failed to extract text from resume'
+      error: 'Failed to extract text from resume: ' + (error instanceof Error ? error.message : 'Unknown error')
     };
   }
 };
