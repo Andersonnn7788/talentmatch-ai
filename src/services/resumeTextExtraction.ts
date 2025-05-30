@@ -11,45 +11,32 @@ export const extractResumeText = async (resumeUrl: string): Promise<ResumeTextRe
   try {
     console.log('📄 Extracting text from resume:', resumeUrl);
     
-    // For demo purposes, we'll use a simplified approach
-    // In a real implementation, you'd want to use a proper PDF/DOC parser
-    
-    // Try to fetch the file
-    const response = await fetch(resumeUrl);
-    
-    if (!response.ok) {
+    // Call the OCR edge function to extract text from the resume
+    const { data, error } = await supabase.functions.invoke('extract-resume-text', {
+      body: {
+        resumeUrl: resumeUrl
+      }
+    });
+
+    if (error) {
+      console.error('❌ OCR extraction error:', error);
       return {
         success: false,
-        error: 'Failed to fetch resume file'
+        error: error.message || 'Failed to extract text from resume'
       };
     }
 
-    const blob = await response.blob();
-    
-    // For text files and simple documents, try to read as text
-    if (blob.type.includes('text')) {
-      const text = await blob.text();
+    if (!data?.text) {
       return {
-        success: true,
-        text: text
+        success: false,
+        error: 'No text extracted from resume'
       };
     }
-    
-    // For PDF and DOC files, return a placeholder text for demo
-    // In production, you'd use a PDF parser library or OCR service
-    const demoResumeText = `
-Resume Summary:
-Experienced software developer with 5+ years in web development.
-Skills: JavaScript, TypeScript, React, Node.js, Python, PostgreSQL, MongoDB
-Experience: Frontend development, full-stack applications, API design
-Education: Computer Science degree
-Interests: Modern web technologies, cloud computing, user experience design
-    `.trim();
-    
-    console.log('✅ Resume text extracted (demo mode)');
+
+    console.log('✅ Resume text extracted successfully');
     return {
       success: true,
-      text: demoResumeText
+      text: data.text
     };
     
   } catch (error) {

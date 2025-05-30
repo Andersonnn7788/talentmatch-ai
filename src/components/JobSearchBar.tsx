@@ -87,59 +87,6 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       return;
     }
 
-    // Check if user has uploaded a resume
-    // For demo purposes, we'll use sample data if no resume is found
-    let resumeText = '';
-    
-    try {
-      // In a real app, you'd fetch the user's profile to get their resume URL
-      // For now, we'll use demo text
-      const result = await extractResumeText('');
-      if (result.success && result.text) {
-        resumeText = result.text;
-      } else {
-        // Use demo resume text
-        resumeText = `
-John Anderson - Senior Software Developer
-
-PROFESSIONAL SUMMARY:
-Experienced Software Developer with 5+ years in web development, specializing in modern JavaScript frameworks and cloud technologies. Proven track record of delivering scalable applications and leading development teams.
-
-TECHNICAL SKILLS:
-• Frontend: React, TypeScript, JavaScript, HTML5, CSS3, Tailwind CSS
-• Backend: Node.js, Express.js, Python, REST APIs, GraphQL
-• Databases: PostgreSQL, MongoDB, Redis
-• Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD pipelines
-• Tools: Git, Webpack, Jest, React Testing Library
-
-EXPERIENCE:
-Senior Frontend Developer | TechFlow Solutions (2021 - Present)
-• Led development of React-based dashboard serving 10K+ users
-• Implemented TypeScript across codebase, reducing bugs by 40%
-• Mentored junior developers and established coding standards
-
-Full Stack Developer | Digital Innovations (2019 - 2021)
-• Built and maintained Node.js microservices handling 1M+ requests daily
-• Developed responsive web applications using React and modern CSS
-• Collaborated with UX team to implement pixel-perfect designs
-
-EDUCATION:
-Bachelor of Science in Computer Science | State University (2019)
-
-INTERESTS:
-Modern web technologies, cloud computing, user experience design, team leadership
-        `.trim();
-      }
-    } catch (error) {
-      console.error('Resume text extraction failed:', error);
-      resumeText = `
-Experienced Software Developer with 5+ years in web development.
-Skills: JavaScript, TypeScript, React, Node.js, Python, PostgreSQL, MongoDB, AWS
-Experience: Frontend development, full-stack applications, API design, team leadership
-Education: Computer Science degree from top university
-      `.trim();
-    }
-
     setAiLoading(true);
     setAiError(undefined);
     setAiAnalysis(null);
@@ -148,8 +95,77 @@ Education: Computer Science degree from top university
     onAIMatch(); // Call the original handler
 
     try {
+      // In a real app, you'd fetch the user's uploaded resume URL from their profile
+      // For demo purposes, we'll check if they have a resume or use demo data
+      let resumeText = '';
+      
+      // Try to get the user's actual resume if they uploaded one
+      // This would typically come from the user's profile in the database
+      const demoResumeUrl = 'https://example.com/demo-resume.pdf'; // Replace with actual resume URL
+      
+      console.log('🔍 Extracting text from resume...');
+      const extractResult = await extractResumeText(demoResumeUrl);
+      
+      if (extractResult.success && extractResult.text) {
+        resumeText = extractResult.text;
+        console.log('✅ Resume text extracted successfully');
+      } else {
+        console.log('⚠️ Using fallback demo resume text');
+        // Fallback to demo text if extraction fails
+        resumeText = `
+ALEX THOMPSON - Software Engineer
+
+PROFESSIONAL SUMMARY:
+Experienced Software Engineer with 5+ years in full-stack development, specializing in React, TypeScript, and cloud technologies. Proven track record of delivering scalable applications and leading development teams.
+
+TECHNICAL SKILLS:
+• Frontend: React, TypeScript, JavaScript, HTML5, CSS3, Tailwind CSS, Next.js
+• Backend: Node.js, Express.js, Python, Django, REST APIs, GraphQL
+• Databases: PostgreSQL, MongoDB, Redis, MySQL
+• Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD, GitHub Actions
+• Tools: Git, Webpack, Jest, React Testing Library, Figma
+
+EXPERIENCE:
+Senior Frontend Developer | TechFlow Solutions (2021 - Present)
+• Led development of React-based dashboard serving 50K+ users daily
+• Implemented TypeScript across codebase, reducing bugs by 40%
+• Mentored team of 3 junior developers and established coding standards
+• Built real-time features using WebSocket and modern state management
+
+Full Stack Developer | Digital Innovations (2019 - 2021)
+• Developed and maintained Node.js microservices handling 2M+ requests daily
+• Created responsive web applications using React and modern CSS frameworks
+• Collaborated with UX team to implement pixel-perfect designs and animations
+• Optimized database queries and API performance for better user experience
+
+Frontend Developer | StartupLab (2018 - 2019)
+• Built interactive web applications using React and vanilla JavaScript
+• Implemented responsive design principles for mobile-first approach
+• Worked with designers to create component libraries and design systems
+• Contributed to open-source projects and internal development tools
+
+EDUCATION:
+Bachelor of Science in Computer Science | State University (2018)
+Relevant Coursework: Data Structures, Algorithms, Software Engineering, Web Development
+
+PROJECTS:
+• E-Commerce Platform: Full-stack application with payment processing and admin dashboard
+• Task Management App: Collaborative tool with real-time updates and team features  
+• Weather Dashboard: React application with geolocation and data visualization
+
+CERTIFICATIONS:
+• AWS Certified Solutions Architect (2022)
+• React Developer Certification (2021)
+
+INTERESTS:
+Modern web technologies, cloud computing, user experience design, team leadership, open source contributions
+        `.trim();
+      }
+
       // Generate personalized job listings based on resume
       const jobListings = generatePersonalizedJobListings(resumeText);
+      console.log('🎯 Getting AI job matches with extracted resume text...');
+      
       const matchResult = await getAIJobMatches(resumeText, jobListings);
 
       if (matchResult.success && matchResult.matches) {
