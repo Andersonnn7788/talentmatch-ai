@@ -6,7 +6,7 @@ import { Search, Upload, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResumeToSupabase } from '@/services/resumeUpload';
-import { getAIJobMatches, getSampleJobListings, JobMatch } from '@/services/aiJobMatch';
+import { getAIJobMatches, generatePersonalizedJobListings, JobMatch, ResumeAnalysis } from '@/services/aiJobMatch';
 import { extractResumeText } from '@/services/resumeTextExtraction';
 import AIJobMatchesModal from './AIJobMatchesModal';
 
@@ -33,6 +33,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
   // AI Matching states
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiMatches, setAiMatches] = useState<JobMatch[] | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<ResumeAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | undefined>();
 
@@ -99,12 +100,34 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       } else {
         // Use demo resume text
         resumeText = `
-Experienced Software Developer with 5+ years in web development.
-Skills: JavaScript, TypeScript, React, Node.js, Python, PostgreSQL, MongoDB, AWS
-Experience: Frontend development, full-stack applications, API design, team leadership
-Education: Computer Science degree from top university
-Interests: Modern web technologies, cloud computing, user experience design
-Looking for: Senior-level position with growth opportunities in a collaborative environment
+John Anderson - Senior Software Developer
+
+PROFESSIONAL SUMMARY:
+Experienced Software Developer with 5+ years in web development, specializing in modern JavaScript frameworks and cloud technologies. Proven track record of delivering scalable applications and leading development teams.
+
+TECHNICAL SKILLS:
+• Frontend: React, TypeScript, JavaScript, HTML5, CSS3, Tailwind CSS
+• Backend: Node.js, Express.js, Python, REST APIs, GraphQL
+• Databases: PostgreSQL, MongoDB, Redis
+• Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD pipelines
+• Tools: Git, Webpack, Jest, React Testing Library
+
+EXPERIENCE:
+Senior Frontend Developer | TechFlow Solutions (2021 - Present)
+• Led development of React-based dashboard serving 10K+ users
+• Implemented TypeScript across codebase, reducing bugs by 40%
+• Mentored junior developers and established coding standards
+
+Full Stack Developer | Digital Innovations (2019 - 2021)
+• Built and maintained Node.js microservices handling 1M+ requests daily
+• Developed responsive web applications using React and modern CSS
+• Collaborated with UX team to implement pixel-perfect designs
+
+EDUCATION:
+Bachelor of Science in Computer Science | State University (2019)
+
+INTERESTS:
+Modern web technologies, cloud computing, user experience design, team leadership
         `.trim();
       }
     } catch (error) {
@@ -119,18 +142,22 @@ Education: Computer Science degree from top university
 
     setAiLoading(true);
     setAiError(undefined);
+    setAiAnalysis(null);
+    setAiMatches(null);
     setAiModalOpen(true);
     onAIMatch(); // Call the original handler
 
     try {
-      const jobListings = getSampleJobListings();
+      // Generate personalized job listings based on resume
+      const jobListings = generatePersonalizedJobListings(resumeText);
       const matchResult = await getAIJobMatches(resumeText, jobListings);
 
       if (matchResult.success && matchResult.matches) {
         setAiMatches(matchResult.matches);
+        setAiAnalysis(matchResult.analysis || null);
         toast({
-          title: "AI matching complete!",
-          description: `Found ${matchResult.matches.length} great job matches for you.`,
+          title: "AI analysis complete!",
+          description: `Found ${matchResult.matches.length} great job matches based on your resume.`,
         });
       } else {
         setAiError(matchResult.error || 'Failed to get AI job matches');
@@ -166,6 +193,7 @@ Education: Computer Science degree from top university
   const closeAiModal = () => {
     setAiModalOpen(false);
     setAiMatches(null);
+    setAiAnalysis(null);
     setAiError(undefined);
   };
 
@@ -279,6 +307,7 @@ Education: Computer Science degree from top university
         isOpen={aiModalOpen}
         onClose={closeAiModal}
         matches={aiMatches}
+        analysis={aiAnalysis}
         isLoading={aiLoading}
         error={aiError}
         onViewJob={handleViewJob}

@@ -4,13 +4,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Sparkles, MapPin, DollarSign, Building, Eye, Loader2 } from 'lucide-react';
-import { JobMatch } from '../services/aiJobMatch';
+import { Sparkles, MapPin, DollarSign, Building, Eye, Loader2, Brain, User, Briefcase, Target } from 'lucide-react';
+import { JobMatch, ResumeAnalysis } from '../services/aiJobMatch';
 
 interface AIJobMatchesModalProps {
   isOpen: boolean;
   onClose: () => void;
   matches: JobMatch[] | null;
+  analysis: ResumeAnalysis | null;
   isLoading: boolean;
   error?: string;
   onViewJob: (jobId: string) => void;
@@ -20,17 +21,18 @@ const AIJobMatchesModal: React.FC<AIJobMatchesModalProps> = ({
   isOpen,
   onClose,
   matches,
+  analysis,
   isLoading,
   error,
   onViewJob
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
             <Sparkles className="h-6 w-6 text-blue-500" />
-            Your Best Matches (Powered by AI)
+            Your AI Job Analysis & Matches
           </DialogTitle>
         </DialogHeader>
 
@@ -60,9 +62,70 @@ const AIJobMatchesModal: React.FC<AIJobMatchesModalProps> = ({
             </div>
           )}
 
+          {analysis && !isLoading && (
+            <div className="mb-6">
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Brain className="h-5 w-5 text-blue-600" />
+                    AI Resume Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <User className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-sm text-blue-800">Profile Summary</h4>
+                          <p className="text-sm text-blue-700">{analysis.summary}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Briefcase className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-sm text-blue-800">Experience Level</h4>
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                            {analysis.experienceLevel}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Target className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-sm text-blue-800">Career Focus</h4>
+                          <p className="text-sm text-blue-700">{analysis.careerFocus}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <Sparkles className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-sm text-blue-800">Key Skills</h4>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {analysis.keySkills.slice(0, 5).map((skill, index) => (
+                              <Badge key={index} variant="outline" className="text-xs bg-white/50 text-blue-700 border-blue-300">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {matches && matches.length > 0 && (
             <div className="space-y-6">
               <div className="text-center mb-6">
+                <h3 className="text-xl font-semibold mb-2">Your Best Matches (Powered by AI)</h3>
                 <p className="text-muted-foreground">
                   Based on your resume analysis, here are the 3 most suitable job opportunities for you:
                 </p>
