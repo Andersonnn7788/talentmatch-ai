@@ -53,7 +53,7 @@ serve(async (req) => {
     }
 
     console.log('📝 Analyzing actual resume text, length:', resumeText.length);
-    console.log('📄 Resume preview:', resumeText.substring(0, 150) + '...');
+    console.log('📄 Resume preview:', resumeText.substring(0, 200) + '...');
 
     // Validate that we have actual resume content
     if (resumeText.length < 100) {
@@ -66,20 +66,39 @@ serve(async (req) => {
       );
     }
 
-    const analysisPrompt = `Analyze the following ACTUAL resume text and provide detailed insights. This is real resume content, not a template:
+    // Check if the text looks meaningful (not just garbled characters)
+    const meaningfulTextRatio = (resumeText.match(/[a-zA-Z\s]+/g) || []).join('').length / resumeText.length;
+    if (meaningfulTextRatio < 0.5) {
+      console.log('⚠️ Resume text appears to be mostly non-readable characters, ratio:', meaningfulTextRatio);
+      return new Response(
+        JSON.stringify({ error: 'Resume text appears to be corrupted or not properly extracted. Please try uploading a different format.' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const analysisPrompt = `Analyze the following ACTUAL resume text and provide detailed insights about THIS SPECIFIC candidate:
 
 RESUME TEXT:
 ${resumeText}
 
-Please provide a JSON response with the following structure:
+Based on the actual content above, please provide a JSON response with the following structure:
 {
-  "summary": "2-3 sentence summary of THIS SPECIFIC candidate's profile based on their actual resume",
+  "summary": "2-3 sentence professional summary of this specific candidate based on their actual resume content",
   "keySkills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
   "experienceLevel": "Junior/Mid-level/Senior/Executive",
-  "careerFocus": "Brief description of THEIR specific career focus based on their actual experience"
+  "careerFocus": "Brief description of their specific career focus based on their actual experience"
 }
 
-Important: Base your analysis ONLY on the actual resume text provided. Extract real skills, experience, and background from this specific person's resume.`;
+IMPORTANT: 
+- Analyze ONLY the actual resume text provided above
+- Extract real skills, experience, and background from this specific person's resume
+- Do not use placeholder or generic content
+- If you cannot determine something from the resume, use "Not specified" rather than making assumptions`;
+
+    console.log('🤖 Sending resume to GPT-4o-mini for analysis...');
 
     const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -92,16 +111,17 @@ Important: Base your analysis ONLY on the actual resume text provided. Extract r
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert resume analyzer. Analyze the ACTUAL resume content provided and give specific insights about this particular candidate. Always respond with valid JSON based on the real resume text.' 
+            content: 'You are an expert resume analyzer. Analyze the ACTUAL resume content provided and give specific insights about this particular candidate. Always respond with valid JSON. Focus on real content, not placeholders.' 
           },
           { role: 'user', content: analysisPrompt }
         ],
-        temperature: 0.3,
-        max_tokens: 600,
+        temperature: 0.2,
+        max_tokens: 800,
       }),
     });
 
     if (!analysisResponse.ok) {
+      console.error('OpenAI analysis API error:', analysisResponse.status);
       throw new Error(`OpenAI API error: ${analysisResponse.status}`);
     }
 
@@ -128,29 +148,33 @@ Important: Base your analysis ONLY on the actual resume text provided. Extract r
       `Job ID: ${job.id}\nTitle: ${job.title}\nCompany: ${job.company}\nLocation: ${job.location}\nSalary: ${job.salary}\nDescription: ${job.description}\n---`
     ).join('\n');
 
-    console.log('🎯 Getting job matches based on actual resume...');
+    console.log('🎯 Getting job matches based on actual resume analysis...');
     
-    const matchPrompt = `You are an intelligent job matching assistant. 
+    const matchPrompt = `Based on the following ACTUAL resume analysis, recommend 3 most suitable jobs:
 
-Given the following ACTUAL resume content, analyze the candidate's specific skills, experience, and interests. Recommend the 3 most suitable job opportunities from the job list provided, and explain briefly why each job is a good fit based on their ACTUAL background.
+RESUME ANALYSIS:
+- Summary: ${analysisResult.summary}
+- Key Skills: ${analysisResult.keySkills.join(', ')}
+- Experience Level: ${analysisResult.experienceLevel}
+- Career Focus: ${analysisResult.careerFocus}
 
-ACTUAL RESUME CONTENT:
-${resumeText}
+ORIGINAL RESUME EXCERPT:
+${resumeText.substring(0, 500)}...
 
 Available Job Listings:
 ${formattedJobs}
 
-Return your response as a JSON array with exactly 3 job matches in this format:
+Return exactly 3 job matches as a JSON array:
 [
   {
     "jobId": "job_id_from_listing",
     "jobTitle": "Job Title",
     "company": "Company Name",
-    "explanation": "1-2 sentence explanation of why this is a good fit based on SPECIFIC skills and experience from THIS PERSON'S actual resume"
+    "explanation": "1-2 sentence explanation based on specific skills and experience from this candidate's resume"
   }
 ]
 
-Focus on matching the candidate's ACTUAL skills, experience level, and career background. Be specific about why each job matches their real qualifications.`;
+Match based on the candidate's ACTUAL skills: ${analysisResult.keySkills.join(', ')} and experience level: ${analysisResult.experienceLevel}`;
 
     const matchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -163,16 +187,17 @@ Focus on matching the candidate's ACTUAL skills, experience level, and career ba
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert job matching assistant. Analyze the ACTUAL resume content and match it to suitable jobs. Always respond with valid JSON arrays containing exactly 3 job matches based on the real candidate profile.' 
+            content: 'You are an expert job matching assistant. Match candidates to jobs based on their ACTUAL resume content and skills. Always respond with valid JSON arrays containing exactly 3 job matches.' 
           },
           { role: 'user', content: matchPrompt }
         ],
-        temperature: 0.7,
-        max_tokens: 1200,
+        temperature: 0.5,
+        max_tokens: 1000,
       }),
     });
 
     if (!matchResponse.ok) {
+      console.error('OpenAI matching API error:', matchResponse.status);
       throw new Error(`OpenAI API error: ${matchResponse.status}`);
     }
 

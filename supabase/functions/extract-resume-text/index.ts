@@ -103,12 +103,6 @@ serve(async (req) => {
 async function extractTextFromImage(imageData: Uint8Array, contentType: string, resumeUrl: string): Promise<string> {
   console.log('🔍 Starting OCR processing for image');
   
-  // For production, you would integrate with:
-  // - Google Cloud Vision API
-  // - AWS Textract  
-  // - Azure Computer Vision
-  // - Tesseract.js for client-side OCR
-  
   // For now, we'll simulate OCR by analyzing the file
   // In a real implementation, you would send the image to an OCR service
   
@@ -126,52 +120,73 @@ async function extractTextFromImage(imageData: Uint8Array, contentType: string, 
 }
 
 async function extractTextFromPDF(pdfData: Uint8Array, resumeUrl: string): Promise<string> {
-  console.log('📑 Starting PDF text extraction');
-  
-  // For production PDF extraction, you would use:
-  // - PDF.js (pdf-parse for Node.js)
-  // - Adobe PDF Services API
-  // - Google Document AI
-  // - AWS Textract
+  console.log('📑 Starting improved PDF text extraction');
   
   try {
     // Simulate PDF processing
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // For now, we'll analyze the PDF structure to extract basic text
-    // In a real implementation, you would use a PDF parsing library
-    
-    // Convert the PDF bytes to string to look for text content
+    // Convert the PDF bytes to string for basic text extraction
     const decoder = new TextDecoder('latin1');
     const pdfString = decoder.decode(pdfData);
     
-    // Try to extract text between stream objects in PDF
-    const textMatches = pdfString.match(/stream[\s\S]*?endstream/g);
+    // Look for text patterns in PDF that indicate actual readable content
+    const textPatterns = [
+      // Common PDF text patterns
+      /BT\s+.*?ET/g,  // Text objects
+      /\(([^)]+)\)/g,  // Text in parentheses
+      /\/F\d+\s+\d+\s+Tf[^(]*\(([^)]+)\)/g,  // Font + text
+    ];
+    
     let extractedText = '';
     
-    if (textMatches) {
-      for (const match of textMatches) {
-        // Try to find readable text in the stream
-        const readableText = match.match(/[A-Za-z][A-Za-z0-9\s\.,;:!?\-]{10,}/g);
+    // Try multiple extraction methods
+    for (const pattern of textPatterns) {
+      const matches = pdfString.match(pattern);
+      if (matches) {
+        for (const match of matches) {
+          // Clean up the match and extract readable text
+          let cleanMatch = match
+            .replace(/BT|ET|Tf|Tj/g, '') // Remove PDF operators
+            .replace(/\/F\d+\s+\d+\s+/g, '') // Remove font references
+            .replace(/[()]/g, '') // Remove parentheses
+            .replace(/\\\d{3}/g, ' ') // Replace octal sequences
+            .replace(/\\[rn]/g, '\n') // Replace escape sequences
+            .trim();
+          
+          // Only add text that looks like real content
+          if (cleanMatch.length > 2 && /[a-zA-Z]/.test(cleanMatch)) {
+            extractedText += cleanMatch + ' ';
+          }
+        }
+      }
+    }
+    
+    // Try alternative extraction for stream objects
+    const streamMatches = pdfString.match(/stream\s+(.*?)\s+endstream/gs);
+    if (streamMatches) {
+      for (const stream of streamMatches) {
+        // Look for readable text in streams
+        const readableText = stream.match(/[A-Za-z][A-Za-z0-9\s\.,;:!?\-]{3,}/g);
         if (readableText) {
           extractedText += readableText.join(' ') + ' ';
         }
       }
     }
     
-    // Also try to find text outside streams
-    const directTextMatches = pdfString.match(/\([^)]{10,}\)/g);
-    if (directTextMatches) {
-      for (const match of directTextMatches) {
-        const cleanText = match.replace(/[()]/g, '');
-        if (cleanText.match(/[A-Za-z]{3,}/)) {
-          extractedText += cleanText + ' ';
-        }
+    // If we still don't have enough text, try a more aggressive approach
+    if (extractedText.trim().length < 100) {
+      // Look for any sequences of readable characters
+      const readableMatches = pdfString.match(/[A-Za-z][A-Za-z0-9\s\.,;:!?\-@()]{10,}/g);
+      if (readableMatches) {
+        extractedText = readableMatches
+          .filter(match => match.length > 10 && /[A-Za-z]{3,}/.test(match))
+          .join(' ');
       }
     }
     
     if (extractedText.trim().length < 50) {
-      throw new Error('Could not extract sufficient text from PDF. Please try uploading the resume as a text file or ensure the PDF contains selectable text.');
+      throw new Error('Could not extract sufficient text from PDF. The PDF may contain images or be password protected. Please try converting to text format or use a different resume.');
     }
     
     return extractedText.trim();
@@ -183,12 +198,6 @@ async function extractTextFromPDF(pdfData: Uint8Array, resumeUrl: string): Promi
 
 async function extractTextFromDocument(docData: Uint8Array, contentType: string, resumeUrl: string): Promise<string> {
   console.log('📄 Starting document text extraction');
-  
-  // For production document extraction, you would use:
-  // - mammoth.js for DOCX
-  // - node-word-extractor
-  // - Apache Tika
-  // - Google Document AI
   
   try {
     // Simulate document processing
