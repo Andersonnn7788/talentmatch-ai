@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,9 +53,9 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       console.log('📎 Starting resume upload for file:', file.name);
       const result = await uploadResumeToSupabase(file, user.id);
 
-      if (result.success && result.url) {
-        setLastUploadedResumeUrl(result.url);
-        console.log('✅ Resume uploaded successfully to:', result.url);
+      if (result.success && result.fileUrl) {
+        setLastUploadedResumeUrl(result.fileUrl);
+        console.log('✅ Resume uploaded successfully to:', result.fileUrl);
         
         toast({
           title: "Resume uploaded successfully!",
