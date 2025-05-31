@@ -33,9 +33,13 @@ serve(async (req) => {
     let systemPrompt = '';
     
     if (userType === 'employee') {
-      systemPrompt = `You're an AI career assistant for a job-matching platform.
+      systemPrompt = `You are a concise career assistant for a job-matching platform.
 
-The user is a job seeker and will ask career-related questions. Use their resume and profile information (if available) to give personalized, practical advice.
+Respond to the user's question in brief, direct, and professional sentences.
+Use clear structure and formatting with short lines.
+Keep each sentence short (maximum 1 line).
+Avoid long paragraphs.
+Format responses as clean, organized points when possible.
 
 Resume:
 ${resumeText || 'No resume provided yet'}
@@ -45,9 +49,13 @@ ${userInput}
 
 Your goal is to help the user make better career decisions. Be brief, supportive, and helpful.`;
     } else {
-      systemPrompt = `You're an AI recruiting assistant for a job-matching platform.
+      systemPrompt = `You are a concise recruiting assistant for a job-matching platform.
 
-The user is a recruiter and will ask questions about hiring, candidate evaluation, and recruitment strategies. Provide practical, actionable advice to help them find and hire the right candidates.
+Respond to the user's question in brief, direct, and professional sentences.
+Use clear structure and formatting with short lines.
+Keep each sentence short (maximum 1 line).
+Avoid long paragraphs.
+Format responses as clean, organized points when possible.
 
 User Question:
 ${userInput}
@@ -68,7 +76,7 @@ Your goal is to help the recruiter make better hiring decisions. Be brief, profe
           { role: 'user', content: userInput }
         ],
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 300,
       }),
     });
 

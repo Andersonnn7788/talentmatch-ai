@@ -55,28 +55,28 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
   const getWelcomeMessage = (): React.ReactNode => {
     if (userType === 'employee') {
       return (
-        <div className="space-y-3">
-          <p>Hi {userName}, I'm your AI career assistant powered by GPT-4o mini.</p>
+        <div className="space-y-2">
+          <p className="text-sm">Hi {userName}, I'm your AI career assistant.</p>
           {resumeText ? (
-            <p>I have access to your resume and can provide personalized career advice based on your background and experience.</p>
+            <p className="text-sm">I have access to your resume for personalized advice.</p>
           ) : (
-            <p>Upload your resume in the job search section to get personalized advice based on your background.</p>
+            <p className="text-sm">Upload your resume to get personalized career guidance.</p>
           )}
-          <p>How can I help with your career today?</p>
+          <p className="text-sm font-medium">How can I help with your career today?</p>
         </div>
       );
     } else {
       return (
-        <div className="space-y-3">
-          <p>Hi {userName}, I'm your AI recruiting assistant powered by GPT-4o mini.</p>
-          <p>I can help you with:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Candidate evaluation strategies</li>
-            <li>Job posting optimization</li>
-            <li>Interview questions and techniques</li>
-            <li>Recruitment best practices</li>
-          </ul>
-          <p>What would you like to know about recruiting?</p>
+        <div className="space-y-2">
+          <p className="text-sm">Hi {userName}, I'm your AI recruiting assistant.</p>
+          <div className="text-sm space-y-1">
+            <p className="font-medium">I can help with:</p>
+            <p>• Candidate evaluation strategies</p>
+            <p>• Job posting optimization</p>
+            <p>• Interview techniques</p>
+            <p>• Recruitment best practices</p>
+          </div>
+          <p className="text-sm font-medium">What would you like to know?</p>
         </div>
       );
     }
@@ -94,6 +94,45 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
       setMessages([welcomeMessage]);
     }
   }, [isOpen, messages.length, userType, userName, resumeText]);
+
+  const formatAIResponse = (response: string): React.ReactNode => {
+    // Split response into lines and format for better readability
+    const lines = response.split('\n').filter(line => line.trim());
+    
+    return (
+      <div className="space-y-1.5 text-sm leading-relaxed">
+        {lines.map((line, index) => {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) return null;
+          
+          // Check if line looks like a bullet point or category
+          if (trimmedLine.includes(':') && trimmedLine.length < 50) {
+            return (
+              <p key={index} className="font-medium text-primary">
+                {trimmedLine}
+              </p>
+            );
+          }
+          
+          // Format bullet points
+          if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*')) {
+            return (
+              <p key={index} className="pl-2">
+                {trimmedLine}
+              </p>
+            );
+          }
+          
+          // Regular sentences
+          return (
+            <p key={index} className="break-words">
+              {trimmedLine}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +159,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
       if (response.success && response.response) {
         const aiMessage: Message = {
           id: `ai-${Date.now()}`,
-          content: response.response,
+          content: formatAIResponse(response.response),
           isUser: false,
           timestamp: new Date()
         };
@@ -168,7 +207,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
           <PopoverContent 
             side="left" 
             align="end" 
-            className="w-80 p-0 shadow-lg border rounded-xl overflow-hidden"
+            className="w-96 p-0 shadow-lg border rounded-xl overflow-hidden"
           >
             {/* Header */}
             <div className="bg-primary/10 p-3 flex items-center justify-between border-b">
@@ -192,24 +231,43 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
             </div>
             
             {/* Messages */}
-            <div className="h-[320px] overflow-y-auto p-3 space-y-3">
+            <div className="h-[360px] overflow-y-auto p-4 space-y-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`p-3 rounded-lg text-sm max-w-[80%] ${
+                  className={`max-w-[85%] ${
                     message.isUser
-                      ? 'bg-primary/5 ml-auto'
-                      : 'bg-muted mr-auto'
+                      ? 'ml-auto'
+                      : 'mr-auto'
                   }`}
                 >
-                  {message.content}
+                  <div
+                    className={`p-3 rounded-lg ${
+                      message.isUser
+                        ? 'bg-primary/5 text-right'
+                        : 'bg-muted'
+                    }`}
+                    style={{
+                      maxWidth: '320px',
+                      lineHeight: '1.6',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {message.isUser ? (
+                      <div className="text-sm break-words">{message.content}</div>
+                    ) : (
+                      message.content
+                    )}
+                  </div>
                 </div>
               ))}
               
               {isLoading && (
-                <div className="bg-muted p-3 rounded-lg mr-auto max-w-[80%] text-sm flex items-center gap-2">
-                  <Loader2 size={14} className="animate-spin" />
-                  <span>Thinking...</span>
+                <div className="max-w-[85%] mr-auto">
+                  <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm">
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Thinking...</span>
+                  </div>
                 </div>
               )}
             </div>
