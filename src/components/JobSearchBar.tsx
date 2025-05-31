@@ -114,6 +114,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       console.log('🔍 Starting AI job matching with uploaded resume:', lastUploadedResumeUrl);
       
       // Extract text from the uploaded resume
+      console.log('📄 Extracting text from resume...');
       const extractResult = await extractResumeText(lastUploadedResumeUrl);
       
       if (!extractResult.success || !extractResult.text) {
@@ -121,13 +122,21 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       }
 
       const resumeText = extractResult.text;
-      console.log('✅ Resume text extracted, length:', resumeText.length);
+      console.log('✅ Resume text extracted successfully');
+      console.log('📊 Extraction method:', extractResult.extractionMethod);
+      console.log('📄 Text length:', resumeText.length);
       console.log('📄 Resume content preview:', resumeText.substring(0, 200) + '...');
+
+      // Validate extracted text quality
+      if (resumeText.length < 100) {
+        throw new Error('The extracted text is too short for meaningful analysis. Please ensure your resume contains readable text.');
+      }
 
       // Generate personalized job listings based on resume
       const jobListings = generatePersonalizedJobListings(resumeText);
       console.log('🎯 Generated personalized job listings:', jobListings.length);
       
+      console.log('🤖 Sending resume text to GPT-4o mini for analysis...');
       const matchResult = await getAIJobMatches(resumeText, jobListings);
 
       if (matchResult.success && matchResult.matches) {
@@ -137,7 +146,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
         
         toast({
           title: "AI analysis complete!",
-          description: `Found ${matchResult.matches.length} great job matches based on your resume.`,
+          description: `Found ${matchResult.matches.length} personalized job matches based on your actual resume content.`,
         });
       } else {
         setAiError(matchResult.error || 'Failed to get AI job matches');
@@ -151,10 +160,11 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       }
     } catch (error) {
       console.error('❌ AI matching error:', error);
-      setAiError('An unexpected error occurred during AI matching');
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during AI matching';
+      setAiError(errorMessage);
       toast({
         title: "AI matching failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
