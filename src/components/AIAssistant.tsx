@@ -1,136 +1,146 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar } from "@/components/ui/avatar";
-import { Bot, SendHorizontal, X, Sparkles } from 'lucide-react';
+import { Bot, SendHorizontal, X, Sparkles, Loader2 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
+import { useToast } from '@/hooks/use-toast';
+import { getAIAssistantResponse } from '@/services/aiAssistant';
+import { extractResumeText } from '@/services/resumeTextExtraction';
 
 interface AIAssistantProps {
   userType: 'employee' | 'recruiter';
   userName?: string;
 }
 
+interface Message {
+  id: string;
+  content: React.ReactNode;
+  isUser: boolean;
+  timestamp: Date;
+}
+
 const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [aiResponses, setAiResponses] = useState<React.ReactNode[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [resumeText, setResumeText] = useState<string>('');
+  const { toast } = useToast();
+
+  // Load user's resume text when component mounts
+  useEffect(() => {
+    const loadResumeText = async () => {
+      // Try to get the latest uploaded resume URL from localStorage
+      const lastResumeUrl = localStorage.getItem('lastUploadedResumeUrl');
+      if (lastResumeUrl && userType === 'employee') {
+        try {
+          const result = await extractResumeText(lastResumeUrl);
+          if (result.success && result.text) {
+            setResumeText(result.text);
+            console.log('📄 Resume loaded for AI assistant');
+          }
+        } catch (error) {
+          console.log('Could not load resume text for AI assistant');
+        }
+      }
+    };
+
+    loadResumeText();
+  }, [userType]);
 
   // Generate initial welcome message based on user type
-  const getWelcomeMessage = () => {
+  const getWelcomeMessage = (): React.ReactNode => {
     if (userType === 'employee') {
       return (
         <div className="space-y-3">
-          <p>Hi {userName}, I am your AI career assistant.</p>
-          <p>After analyzing your profile, I found that:</p>
-          <ul className="list-disc pl-5 space-y-2">
-            <li>Your skills match with 18 open positions in your area.</li>
-            <li>Adding <strong>cloud computing</strong> skills could increase your match rate by 35%.</li>
-          </ul>
-          <p>How can I help with your job search today?</p>
+          <p>Hi {userName}, I'm your AI career assistant powered by GPT-4o mini.</p>
+          {resumeText ? (
+            <p>I have access to your resume and can provide personalized career advice based on your background and experience.</p>
+          ) : (
+            <p>Upload your resume in the job search section to get personalized advice based on your background.</p>
+          )}
+          <p>How can I help with your career today?</p>
         </div>
       );
     } else {
       return (
         <div className="space-y-3">
-          <p>Hi {userName}, I am your AI recruiting assistant.</p>
-          <p>Based on your current positions:</p>
-          <ul className="list-disc pl-5 space-y-2">
-            <li>You have 12 qualified candidates for the Senior Developer role.</li>
-            <li>Adding <strong>remote work options</strong> could increase your applicant pool by 40%.</li>
-          </ul>
-          <p>How can I help with your recruiting efforts today?</p>
-        </div>
-      );
-    }
-  };
-
-  const simulateAIResponse = (question: string) => {
-    // Simple response simulation based on keywords
-    if (question.toLowerCase().includes("company") || question.toLowerCase().includes("companies")) {
-      if (userType === 'employee') {
-        return (
-          <div className="space-y-2">
-            <p>Based on your preference for large-scale companies, I recommend:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong>TechCorp Inc.</strong> - They're hiring for your skills and offer competitive benefits.</li>
-              <li><strong>DataWorks Labs</strong> - Their salary range matches your expectations.</li>
-            </ul>
-            <p>Would you like me to prepare your application for these companies?</p>
-          </div>
-        );
-      } else {
-        return (
-          <div className="space-y-2">
-            <p>To attract candidates from large companies, consider:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Highlighting your company's growth trajectory</li>
-              <li>Emphasizing your competitive benefits package</li>
-              <li>Showcasing your modern tech stack and innovation</li>
-            </ul>
-          </div>
-        );
-      }
-    } else if (question.toLowerCase().includes("salary") || question.toLowerCase().includes("pay")) {
-      if (userType === 'employee') {
-        return (
-          <div className="space-y-2">
-            <p>Based on your experience and skills, your market value is <strong>$95K-$120K</strong>.</p>
-            <p>Top paying companies in your field:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong>TechCorp Inc.</strong> - $120K-$150K</li>
-              <li><strong>DataWorks Labs</strong> - $110K-$135K</li>
-            </ul>
-          </div>
-        );
-      } else {
-        return (
-          <div className="space-y-2">
-            <p>Current market rates for the positions you're hiring:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Senior Developer:</strong> $120K-$150K</li>
-              <li><strong>UX Designer:</strong> $90K-$120K</li>
-              <li><strong>Product Manager:</strong> $110K-$140K</li>
-            </ul>
-            <p>Your offered salaries are 5% below market average, which may impact application rates.</p>
-          </div>
-        );
-      }
-    } else {
-      return (
-        <div className="space-y-2">
-          <p>I'm here to help with your {userType === 'employee' ? 'job search' : 'recruitment needs'}. You can ask me about:</p>
+          <p>Hi {userName}, I'm your AI recruiting assistant powered by GPT-4o mini.</p>
+          <p>I can help you with:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li>Job matches and requirements</li>
-            <li>Salary insights and negotiations</li>
-            <li>Interview preparation</li>
-            <li>{userType === 'employee' ? 'Career growth opportunities' : 'Candidate sourcing strategies'}</li>
+            <li>Candidate evaluation strategies</li>
+            <li>Job posting optimization</li>
+            <li>Interview questions and techniques</li>
+            <li>Recruitment best practices</li>
           </ul>
+          <p>What would you like to know about recruiting?</p>
         </div>
       );
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Initialize welcome message when component first opens
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      const welcomeMessage: Message = {
+        id: 'welcome',
+        content: getWelcomeMessage(),
+        isUser: false,
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [isOpen, messages.length, userType, userName, resumeText]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
-    // Add user message
-    setAiResponses(prev => [...prev, 
-      <div key={`user-${Date.now()}`} className="bg-primary/5 p-3 rounded-lg ml-auto max-w-[80%] text-sm">
-        {input}
-      </div>
-    ]);
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      content: input,
+      isUser: true,
+      timestamp: new Date()
+    };
 
-    // Simulate AI response
-    setTimeout(() => {
-      setAiResponses(prev => [...prev,
-        <div key={`ai-${Date.now()}`} className="bg-muted p-3 rounded-lg mr-auto max-w-[80%] text-sm">
-          {simulateAIResponse(input)}
-        </div>
-      ]);
-    }, 500);
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      const response = await getAIAssistantResponse({
+        userInput: input,
+        resumeText: resumeText,
+        userType: userType,
+        userName: userName
+      });
+
+      if (response.success && response.response) {
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          content: response.response,
+          isUser: false,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      } else {
+        toast({
+          title: "AI Assistant Error",
+          description: response.error || "Failed to get response from AI assistant",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to AI assistant. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
 
     setInput("");
   };
@@ -168,7 +178,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
                 </Avatar>
                 <div>
                   <div className="text-sm font-medium">AI Assistant</div>
-                  <div className="text-xs text-muted-foreground">Powered by TalentMatch.AI</div>
+                  <div className="text-xs text-muted-foreground">Powered by GPT-4o mini</div>
                 </div>
               </div>
               <Button 
@@ -183,13 +193,25 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
             
             {/* Messages */}
             <div className="h-[320px] overflow-y-auto p-3 space-y-3">
-              <div className="bg-muted p-3 rounded-lg mr-auto max-w-[80%] text-sm">
-                {getWelcomeMessage()}
-              </div>
-              
-              {aiResponses.map((response, index) => (
-                <React.Fragment key={index}>{response}</React.Fragment>
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`p-3 rounded-lg text-sm max-w-[80%] ${
+                    message.isUser
+                      ? 'bg-primary/5 ml-auto'
+                      : 'bg-muted mr-auto'
+                  }`}
+                >
+                  {message.content}
+                </div>
               ))}
+              
+              {isLoading && (
+                <div className="bg-muted p-3 rounded-lg mr-auto max-w-[80%] text-sm flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Thinking...</span>
+                </div>
+              )}
             </div>
             
             {/* Input */}
@@ -206,14 +228,19 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ userType, userName = "User" }
                       handleSubmit(e);
                     }
                   }}
+                  disabled={isLoading}
                 />
                 <Button 
                   type="submit" 
                   size="icon" 
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || isLoading}
                   className="h-10 w-10 shrink-0"
                 >
-                  <SendHorizontal size={16} />
+                  {isLoading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <SendHorizontal size={16} />
+                  )}
                 </Button>
               </div>
             </form>

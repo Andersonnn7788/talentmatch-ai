@@ -55,6 +55,8 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
 
       if (result.success && result.fileUrl) {
         setLastUploadedResumeUrl(result.fileUrl);
+        // Store in localStorage for AI assistant access
+        localStorage.setItem('lastUploadedResumeUrl', result.fileUrl);
         console.log('✅ Resume uploaded successfully to:', result.fileUrl);
         
         toast({
