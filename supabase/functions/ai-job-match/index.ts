@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -52,8 +51,8 @@ serve(async (req) => {
       );
     }
 
-    console.log('📝 Analyzing actual resume text, length:', resumeText.length);
-    console.log('📄 Resume preview:', resumeText.substring(0, 200) + '...');
+    console.log('📝 Analyzing resume text, length:', resumeText.length);
+    console.log('📄 Resume preview:', resumeText.substring(0, 300) + '...');
 
     // Validate that we have actual resume content
     if (resumeText.length < 100) {
@@ -66,12 +65,19 @@ serve(async (req) => {
       );
     }
 
-    // Check if the text looks meaningful (not just garbled characters)
-    const meaningfulTextRatio = (resumeText.match(/[a-zA-Z\s]+/g) || []).join('').length / resumeText.length;
-    if (meaningfulTextRatio < 0.5) {
-      console.log('⚠️ Resume text appears to be mostly non-readable characters, ratio:', meaningfulTextRatio);
+    // Check if the text looks meaningful (has proper words and structure)
+    const words = resumeText.toLowerCase().split(/\s+/);
+    const commonResumeWords = ['experience', 'skills', 'education', 'work', 'developed', 'managed', 'led', 'created', 'implemented', 'engineer', 'developer', 'manager', 'analyst', 'university', 'bachelor', 'master', 'years', 'team', 'project', 'software', 'technology', 'programming', 'javascript', 'python', 'react', 'node'];
+    
+    const resumeWordCount = words.filter(word => commonResumeWords.includes(word.toLowerCase())).length;
+    const resumeWordRatio = resumeWordCount / Math.min(words.length, 100); // Check first 100 words
+    
+    console.log('📊 Resume analysis - Word count:', words.length, 'Resume words found:', resumeWordCount, 'Ratio:', resumeWordRatio);
+    
+    if (resumeWordRatio < 0.05 && words.length > 50) {
+      console.log('⚠️ Resume text appears to lack professional content');
       return new Response(
-        JSON.stringify({ error: 'Resume text appears to be corrupted or not properly extracted. Please try uploading a different format.' }),
+        JSON.stringify({ error: 'Resume text does not appear to contain professional content. Please ensure the file was extracted correctly.' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -79,7 +85,7 @@ serve(async (req) => {
       );
     }
 
-    const analysisPrompt = `Analyze the following ACTUAL resume text and provide detailed insights about THIS SPECIFIC candidate:
+    const analysisPrompt = `Analyze the following resume text and provide detailed insights about this candidate:
 
 RESUME TEXT:
 ${resumeText}
@@ -96,7 +102,8 @@ IMPORTANT:
 - Analyze ONLY the actual resume text provided above
 - Extract real skills, experience, and background from this specific person's resume
 - Do not use placeholder or generic content
-- If you cannot determine something from the resume, use "Not specified" rather than making assumptions`;
+- Base the experience level on years of experience and job titles mentioned
+- If you cannot determine something clearly from the resume, use reasonable inference based on the content provided`;
 
     console.log('🤖 Sending resume to GPT-4o-mini for analysis...');
 
@@ -111,11 +118,11 @@ IMPORTANT:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert resume analyzer. Analyze the ACTUAL resume content provided and give specific insights about this particular candidate. Always respond with valid JSON. Focus on real content, not placeholders.' 
+            content: 'You are an expert resume analyzer. Analyze the ACTUAL resume content provided and give specific insights about this particular candidate. Always respond with valid JSON. Focus on real content extracted from the resume.' 
           },
           { role: 'user', content: analysisPrompt }
         ],
-        temperature: 0.2,
+        temperature: 0.3,
         max_tokens: 800,
       }),
     });
@@ -135,6 +142,12 @@ IMPORTANT:
       analysisResult = JSON.parse(cleanedText);
       
       console.log('✅ Parsed analysis result:', analysisResult);
+      
+      // Validate analysis result
+      if (!analysisResult.summary || !analysisResult.experienceLevel || !analysisResult.careerFocus) {
+        throw new Error('Incomplete analysis result');
+      }
+      
     } catch (parseError) {
       console.error('Analysis parsing error:', parseError);
       throw new Error('Failed to parse AI analysis response');
@@ -150,7 +163,7 @@ IMPORTANT:
 
     console.log('🎯 Getting job matches based on actual resume analysis...');
     
-    const matchPrompt = `Based on the following ACTUAL resume analysis, recommend 3 most suitable jobs:
+    const matchPrompt = `Based on the following ACTUAL resume analysis, recommend the 3 most suitable jobs from the available listings:
 
 RESUME ANALYSIS:
 - Summary: ${analysisResult.summary}
@@ -158,23 +171,20 @@ RESUME ANALYSIS:
 - Experience Level: ${analysisResult.experienceLevel}
 - Career Focus: ${analysisResult.careerFocus}
 
-ORIGINAL RESUME EXCERPT:
-${resumeText.substring(0, 500)}...
-
 Available Job Listings:
 ${formattedJobs}
 
-Return exactly 3 job matches as a JSON array:
+Return exactly 3 job matches as a JSON array, selecting the most relevant jobs from the listings:
 [
   {
     "jobId": "job_id_from_listing",
     "jobTitle": "Job Title",
     "company": "Company Name",
-    "explanation": "1-2 sentence explanation based on specific skills and experience from this candidate's resume"
+    "explanation": "1-2 sentence explanation based on specific skills and experience from this candidate's resume and why this job is a good match"
   }
 ]
 
-Match based on the candidate's ACTUAL skills: ${analysisResult.keySkills.join(', ')} and experience level: ${analysisResult.experienceLevel}`;
+Base recommendations on the candidate's actual skills (${analysisResult.keySkills.join(', ')}) and experience level (${analysisResult.experienceLevel}).`;
 
     const matchResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -187,7 +197,7 @@ Match based on the candidate's ACTUAL skills: ${analysisResult.keySkills.join(',
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert job matching assistant. Match candidates to jobs based on their ACTUAL resume content and skills. Always respond with valid JSON arrays containing exactly 3 job matches.' 
+            content: 'You are an expert job matching assistant. Match candidates to jobs based on their ACTUAL resume content and skills. Always respond with valid JSON arrays containing exactly 3 job matches from the provided listings.' 
           },
           { role: 'user', content: matchPrompt }
         ],
