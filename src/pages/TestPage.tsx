@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -117,55 +118,57 @@ export default function TestPage() {
             <CardHeader>
               <CardTitle>Test Resume Upload</CardTitle>
             </CardHeader>
-            <CardContent>            <ResumeUpload 
-              onUploadSuccess={(fileUrl, filePath) => {
-                console.log('Upload successful:', { fileUrl, filePath });
-                alert(`Upload successful! File URL: ${fileUrl}`);
-              }}
-              onDeleteSuccess={() => {
-                console.log('Delete successful');
-                alert('File deleted successfully!');
-              }}
-            />
+            <CardContent>
+              <ResumeUpload 
+                onUploadSuccess={(fileUrl, filePath) => {
+                  console.log('Upload successful:', { fileUrl, filePath });
+                  alert(`Upload successful! File URL: ${fileUrl}`);
+                }}
+                onDeleteSuccess={() => {
+                  console.log('Delete successful');
+                  alert('File deleted successfully!');
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>📋 What Should Work Now</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-green-600">✅</span>
+                <span>Database schema updated with resume fields</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-600">✅</span>
+                <span>Storage bucket "documents" created and configured</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-600">✅</span>
+                <span>Storage policies added for secure file operations</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-blue-600">🧪</span>
+                <span>Ready to test resume upload functionality</span>
+              </div>
+              
+              <Alert className="mt-4">
+                <AlertDescription>
+                  <strong>Next Steps:</strong>
+                  <br />1. Click "Verify Supabase Setup" above to confirm all configurations
+                  <br />2. If all checks pass, test resume upload using the component below
+                  <br />3. Try uploading a PDF, DOC, or DOCX file (max 5MB)
+                  <br />4. Check your Supabase Storage to see the uploaded file
+                </AlertDescription>
+              </Alert>
+            </div>
           </CardContent>
         </Card>
-      )}
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>📋 What Should Work Now</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-green-600">✅</span>
-              <span>Database schema updated with resume fields</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-600">✅</span>
-              <span>Storage bucket "documents" created and configured</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-green-600">✅</span>
-              <span>Storage policies added for secure file operations</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-blue-600">🧪</span>
-              <span>Ready to test resume upload functionality</span>
-            </div>
-            
-            <Alert className="mt-4">
-              <AlertDescription>
-                <strong>Next Steps:</strong>
-                <br />1. Click "Verify Supabase Setup" above to confirm all configurations
-                <br />2. If all checks pass, test resume upload using the component below
-                <br />3. Try uploading a PDF, DOC, or DOCX file (max 5MB)
-                <br />4. Check your Supabase Storage to see the uploaded file
-              </AlertDescription>
-            </Alert>
-          </div>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }
