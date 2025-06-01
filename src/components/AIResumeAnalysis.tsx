@@ -45,10 +45,21 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
     try {
       console.log('🧠 Starting AI resume analysis for:', filePath);
       
-      // Use the filePath (which includes the full storage path) instead of just fileName
+      // Extract just the filename from the full path for the API call
+      let cleanFileName = filePath;
+      
+      // If the filePath includes the full storage path, extract just the filename part
+      if (filePath.includes('resumes/')) {
+        // Extract everything after the last 'resumes/'
+        const parts = filePath.split('resumes/');
+        cleanFileName = parts[parts.length - 1];
+      }
+      
+      console.log('📁 Clean filename for API:', cleanFileName);
+      
       const response = await testParseResume({
         user_id: user.id,
-        file_name: filePath // This is actually the full file path in storage
+        file_name: cleanFileName // Pass just the filename without path prefix
       });
 
       if (response.success && response.analysis) {
@@ -120,20 +131,23 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
         });
 
       } else {
-        setError(response.error || 'Failed to analyze resume');
+        const errorMsg = response.error || 'Failed to analyze resume';
+        setError(errorMsg);
         toast({
           title: "Analysis Failed",
-          description: response.error || "Failed to analyze resume. Please try again.",
+          description: errorMsg.includes('File not found') 
+            ? "We couldn't find your resume file. Please try uploading again."
+            : "We couldn't analyze your resume. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('❌ Resume analysis error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setError(errorMessage);
+      setError('We couldn\'t analyze your resume. Please try again.');
       toast({
         title: "Analysis Error",
-        description: "An unexpected error occurred during analysis.",
+        description: "We couldn't analyze your resume. Please try again.",
         variant: "destructive",
       });
     } finally {

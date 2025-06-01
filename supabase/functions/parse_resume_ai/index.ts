@@ -132,11 +132,18 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id, file_name }: RequestBody = await req.json();
+    const requestBody: RequestBody = await req.json();
+    console.log('📥 Request body:', JSON.stringify(requestBody, null, 2));
+
+    const { user_id, file_name } = requestBody;
 
     if (!user_id || !file_name) {
+      console.error('❌ Missing required fields:', { user_id: !!user_id, file_name: !!file_name });
       return new Response(
-        JSON.stringify({ error: 'user_id and file_name are required' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'user_id and file_name are required' 
+        }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -146,15 +153,29 @@ serve(async (req) => {
 
     console.log(`🔄 Processing resume: ${file_name} for user: ${user_id}`);
 
+    // Clean the file path - remove any duplicate 'resumes/' prefix
+    let cleanFilePath = file_name;
+    if (cleanFilePath.startsWith('resumes/resumes/')) {
+      cleanFilePath = cleanFilePath.replace('resumes/resumes/', 'resumes/');
+    }
+    if (!cleanFilePath.startsWith('resumes/')) {
+      cleanFilePath = `resumes/${cleanFilePath}`;
+    }
+
+    console.log(`📁 Cleaned file path: ${cleanFilePath}`);
+
     // Download file from Supabase Storage
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
-      .download(`resumes/${file_name}`);
+      .download(cleanFilePath);
 
     if (downloadError) {
       console.error('❌ File download error:', downloadError);
       return new Response(
-        JSON.stringify({ error: `Failed to download file: ${downloadError.message}` }),
+        JSON.stringify({ 
+          success: false,
+          error: `Failed to download file: ${downloadError.message}. File path: ${cleanFilePath}` 
+        }),
         { 
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -169,7 +190,7 @@ serve(async (req) => {
 
     // Detect file type and extract text
     let extractedText = '';
-    const fileName = file_name.toLowerCase();
+    const fileName = cleanFilePath.toLowerCase();
 
     if (fileName.endsWith('.pdf')) {
       console.log('📄 Extracting text from PDF...');
@@ -179,7 +200,10 @@ serve(async (req) => {
       extractedText = await extractDOCXText(arrayBuffer);
     } else {
       return new Response(
-        JSON.stringify({ error: 'Unsupported file type. Only PDF and DOCX files are supported.' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Unsupported file type. Only PDF and DOCX files are supported.' 
+        }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -195,7 +219,10 @@ serve(async (req) => {
 
     if (!extractedText || extractedText.length < 50) {
       return new Response(
-        JSON.stringify({ error: 'Could not extract meaningful text from the file' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Could not extract meaningful text from the file. Please ensure the file contains readable text.' 
+        }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -213,7 +240,7 @@ serve(async (req) => {
       .from('resume_analysis')
       .insert({
         user_id,
-        file_name,
+        file_name: cleanFilePath,
         analysis,
       })
       .select()
@@ -222,7 +249,10 @@ serve(async (req) => {
     if (insertError) {
       console.error('❌ Database insert error:', insertError);
       return new Response(
-        JSON.stringify({ error: `Failed to save analysis: ${insertError.message}` }),
+        JSON.stringify({ 
+          success: false,
+          error: `Failed to save analysis: ${insertError.message}` 
+        }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -249,6 +279,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
+        success: false,
         error: error.message || 'Failed to parse resume'
       }),
       {
