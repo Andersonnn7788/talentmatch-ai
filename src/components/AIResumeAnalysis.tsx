@@ -17,11 +17,13 @@ interface ResumeAnalysisData {
 
 interface AIResumeAnalysisProps {
   fileName?: string;
+  filePath?: string;
   onAnalysisComplete?: (analysis: ResumeAnalysisData) => void;
 }
 
 const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({ 
   fileName, 
+  filePath,
   onAnalysisComplete 
 }) => {
   const { user } = useAuth();
@@ -31,7 +33,7 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const analyzeResume = async () => {
-    if (!fileName || !user) {
+    if (!filePath || !user) {
       setError('No resume uploaded or user not authenticated');
       return;
     }
@@ -41,11 +43,12 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
     setAnalysis(null);
 
     try {
-      console.log('🧠 Starting AI resume analysis for:', fileName);
+      console.log('🧠 Starting AI resume analysis for:', filePath);
       
+      // Use the filePath (which includes the full storage path) instead of just fileName
       const response = await testParseResume({
         user_id: user.id,
-        file_name: fileName
+        file_name: filePath // This is actually the full file path in storage
       });
 
       if (response.success && response.analysis) {
@@ -138,12 +141,12 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
     }
   };
 
-  // Auto-analyze when fileName is provided
+  // Auto-analyze when filePath is provided
   React.useEffect(() => {
-    if (fileName && user && !analysis && !loading) {
+    if (filePath && user && !analysis && !loading) {
       analyzeResume();
     }
-  }, [fileName, user]);
+  }, [filePath, user]);
 
   if (!fileName) {
     return (

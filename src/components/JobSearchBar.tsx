@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +32,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
   const [uploading, setUploading] = useState(false);
   const [lastUploadedResumeUrl, setLastUploadedResumeUrl] = useState<string | null>(null);
   const [lastUploadedFileName, setLastUploadedFileName] = useState<string | null>(null);
+  const [lastUploadedFilePath, setLastUploadedFilePath] = useState<string | null>(null);
   
   // AI Matching states
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -56,12 +56,14 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       console.log('📎 Starting resume upload for file:', file.name);
       const result = await uploadResumeToSupabase(file, user.id);
 
-      if (result.success && result.fileUrl) {
+      if (result.success && result.fileUrl && result.filePath) {
         setLastUploadedResumeUrl(result.fileUrl);
         setLastUploadedFileName(file.name);
+        setLastUploadedFilePath(result.filePath); // Store the full file path
         // Store in localStorage for AI assistant access
         localStorage.setItem('lastUploadedResumeUrl', result.fileUrl);
         console.log('✅ Resume uploaded successfully to:', result.fileUrl);
+        console.log('📁 File path:', result.filePath);
         
         toast({
           title: "Resume uploaded successfully!",
@@ -305,6 +307,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
         {/* AI Resume Analysis Component */}
         <AIResumeAnalysis 
           fileName={lastUploadedFileName}
+          filePath={lastUploadedFilePath}
           onAnalysisComplete={(analysis) => {
             console.log('Resume analysis completed:', analysis);
           }}
