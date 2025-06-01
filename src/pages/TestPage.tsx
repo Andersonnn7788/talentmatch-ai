@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { checkDatabaseSetup, printSetupReport } from '../utils/databaseSetupCheck';
 import ResumeUpload from '../components/ResumeUpload';
+import ResumeParserTest from '../components/ResumeParserTest';
 
 export default function TestPage() {
   const [setupResults, setSetupResults] = useState<any[]>([]);
@@ -46,67 +47,77 @@ export default function TestPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Resume Upload Test Page</h1>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900">Database Setup & Testing</h1>
+          <p className="text-gray-600 mt-2">Verify Supabase configuration and test functionality</p>
+        </div>
+
         <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>🎉 Supabase Configuration Complete!</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert className="mb-4">
-            <AlertDescription className="text-green-600">
-              ✅ You've successfully added the necessary policies in Supabase! 
-              Now let's verify everything is working correctly.
-            </AlertDescription>
-          </Alert>
-          
-          <Button 
-            onClick={runSetupCheck} 
-            disabled={isChecking}
-            className="mb-4"
-          >
-            {isChecking ? 'Checking Configuration...' : 'Verify Supabase Setup'}
-          </Button>
-
-          {setupResults.length > 0 && (
-            <div className="space-y-3">
-              {setupResults.map((result, index) => (
-                <Alert key={index}>
-                  <AlertDescription>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{getStatusIcon(result.status)}</span>
-                      <span className="font-medium">{result.step}:</span>
-                      <span className={getStatusColor(result.status)}>
-                        {result.message}
-                      </span>
-                    </div>
-                    {result.sqlToRun && (
-                      <pre className="mt-2 p-2 bg-gray-100 rounded text-sm overflow-x-auto">
-                        {result.sqlToRun}
-                      </pre>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              ))}
-              
-              {setupResults.every(r => r.status === 'success') && (
-                <Alert>
-                  <AlertDescription className="text-green-600 font-medium">
-                    🎉 All setup steps completed! Resume upload should work perfectly.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {showUpload && (
-        <Card>
           <CardHeader>
-            <CardTitle>Test Resume Upload</CardTitle>
+            <CardTitle>🎉 Supabase Configuration Complete!</CardTitle>
           </CardHeader>
-          <CardContent>            <ResumeUpload 
+          <CardContent>
+            <Alert className="mb-4">
+              <AlertDescription className="text-green-600">
+                ✅ You've successfully added the necessary policies in Supabase! 
+                Now let's verify everything is working correctly.
+              </AlertDescription>
+            </Alert>
+            
+            <Button 
+              onClick={runSetupCheck} 
+              disabled={isChecking}
+              className="mb-4"
+            >
+              {isChecking ? 'Checking Configuration...' : 'Verify Supabase Setup'}
+            </Button>
+
+            {setupResults.length > 0 && (
+              <div className="space-y-3">
+                {setupResults.map((result, index) => (
+                  <Alert key={index}>
+                    <AlertDescription>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{getStatusIcon(result.status)}</span>
+                        <span className="font-medium">{result.step}:</span>
+                        <span className={getStatusColor(result.status)}>
+                          {result.message}
+                        </span>
+                      </div>
+                      {result.sqlToRun && (
+                        <pre className="mt-2 p-2 bg-gray-100 rounded text-sm overflow-x-auto">
+                          {result.sqlToRun}
+                        </pre>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                ))}
+                
+                {setupResults.every(r => r.status === 'success') && (
+                  <Alert>
+                    <AlertDescription className="text-green-600 font-medium">
+                      🎉 All setup steps completed! Resume upload should work perfectly.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Resume Parser Test */}
+        <div className="flex justify-center">
+          <ResumeParserTest />
+        </div>
+
+        {showUpload && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Resume Upload</CardTitle>
+            </CardHeader>
+            <CardContent>            <ResumeUpload 
               onUploadSuccess={(fileUrl, filePath) => {
                 console.log('Upload successful:', { fileUrl, filePath });
                 alert(`Upload successful! File URL: ${fileUrl}`);
@@ -118,7 +129,9 @@ export default function TestPage() {
             />
           </CardContent>
         </Card>
-      )}      <Card className="mt-6">
+      )}
+
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle>📋 What Should Work Now</CardTitle>
         </CardHeader>

@@ -9,6 +9,173 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      application_history: {
+        Row: {
+          applied_at: string | null
+          created_at: string | null
+          id: string
+          match_id: string | null
+          notes: string | null
+          response_received_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+          notes?: string | null
+          response_received_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+          notes?: string | null
+          response_received_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_history_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_feedback: {
+        Row: {
+          application_id: string | null
+          created_at: string | null
+          feedback_text: string | null
+          id: string
+          improvement_areas: string[] | null
+          interview_date: string | null
+          interviewer_notes: string | null
+          outcome: string | null
+          skills_assessed: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          application_id?: string | null
+          created_at?: string | null
+          feedback_text?: string | null
+          id?: string
+          improvement_areas?: string[] | null
+          interview_date?: string | null
+          interviewer_notes?: string | null
+          outcome?: string | null
+          skills_assessed?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          application_id?: string | null
+          created_at?: string | null
+          feedback_text?: string | null
+          id?: string
+          improvement_areas?: string[] | null
+          interview_date?: string | null
+          interviewer_notes?: string | null
+          outcome?: string | null
+          skills_assessed?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_feedback_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "application_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          employment_type: string | null
+          id: string
+          job_description: string | null
+          job_title: string
+          job_url: string | null
+          location: string | null
+          match_reasons: string[] | null
+          match_score: number | null
+          required_skills: string[] | null
+          salary_range: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string | null
+          employment_type?: string | null
+          id?: string
+          job_description?: string | null
+          job_title: string
+          job_url?: string | null
+          location?: string | null
+          match_reasons?: string[] | null
+          match_score?: number | null
+          required_skills?: string[] | null
+          salary_range?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string | null
+          employment_type?: string | null
+          id?: string
+          job_description?: string | null
+          job_title?: string
+          job_url?: string | null
+          location?: string | null
+          match_reasons?: string[] | null
+          match_score?: number | null
+          required_skills?: string[] | null
+          salary_range?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -44,6 +211,71 @@ export type Database = {
           user_type?: string
         }
         Relationships: []
+      }
+      resume_analysis: {
+        Row: {
+          analysis: string
+          created_at: string
+          file_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          analysis: string
+          created_at?: string
+          file_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          analysis?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          experience: string | null
+          id: string
+          job_preferences: Json | null
+          name: string
+          profile_id: string | null
+          skills: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          experience?: string | null
+          id?: string
+          job_preferences?: Json | null
+          name: string
+          profile_id?: string | null
+          skills?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          experience?: string | null
+          id?: string
+          job_preferences?: Json | null
+          name?: string
+          profile_id?: string | null
+          skills?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
