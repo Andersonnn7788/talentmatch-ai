@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { uploadResumeToSupabase } from '@/services/resumeUpload';
 import { getAIJobMatches, generatePersonalizedJobListings, JobMatch, ResumeAnalysis } from '@/services/aiJobMatch';
 import { extractResumeText } from '@/services/resumeTextExtraction';
 import AIJobMatchesModal from './AIJobMatchesModal';
+import AIResumeAnalysis from './AIResumeAnalysis';
 
 interface JobSearchBarProps {
   onSearch: (searchParams: {
@@ -30,6 +32,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
   const [location, setLocation] = useState('');
   const [uploading, setUploading] = useState(false);
   const [lastUploadedResumeUrl, setLastUploadedResumeUrl] = useState<string | null>(null);
+  const [lastUploadedFileName, setLastUploadedFileName] = useState<string | null>(null);
   
   // AI Matching states
   const [aiModalOpen, setAiModalOpen] = useState(false);
@@ -55,13 +58,14 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
 
       if (result.success && result.fileUrl) {
         setLastUploadedResumeUrl(result.fileUrl);
+        setLastUploadedFileName(file.name);
         // Store in localStorage for AI assistant access
         localStorage.setItem('lastUploadedResumeUrl', result.fileUrl);
         console.log('✅ Resume uploaded successfully to:', result.fileUrl);
         
         toast({
           title: "Resume uploaded successfully!",
-          description: "Your resume has been uploaded and is ready for AI analysis.",
+          description: "Your resume has been uploaded and AI analysis will begin automatically.",
         });
       } else {
         console.error('❌ Resume upload failed:', result.error);
@@ -193,7 +197,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
 
   return (
     <>
-      <div className="w-full max-w-4xl mx-auto">
+      <div className="w-full max-w-4xl mx-auto space-y-6">
         <form onSubmit={handleSearch} className="glass rounded-xl p-6 shadow-sm border border-slate-200 bg-white/50 backdrop-blur-sm">
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -297,6 +301,14 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
             </div>
           </div>
         </form>
+
+        {/* AI Resume Analysis Component */}
+        <AIResumeAnalysis 
+          fileName={lastUploadedFileName}
+          onAnalysisComplete={(analysis) => {
+            console.log('Resume analysis completed:', analysis);
+          }}
+        />
       </div>
 
       <AIJobMatchesModal
