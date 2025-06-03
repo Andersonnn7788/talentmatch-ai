@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -20,40 +19,131 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Simple PDF text extraction function
+// Improved PDF text extraction function
 async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
+    console.log('🔍 Starting improved PDF text extraction...');
+    
     // Convert ArrayBuffer to Uint8Array
     const uint8Array = new Uint8Array(arrayBuffer);
     
-    // Simple text extraction - look for text objects in PDF
-    const text = new TextDecoder().decode(uint8Array);
+    // Convert to string for text search
+    const pdfString = new TextDecoder('latin1').decode(uint8Array);
     
-    // Extract text between BT and ET markers (basic PDF text extraction)
-    const textMatches = text.match(/BT\s*(.*?)\s*ET/gs);
-    if (textMatches) {
-      let extractedText = '';
-      for (const match of textMatches) {
-        // Remove PDF commands and extract readable text
-        const cleanText = match
-          .replace(/BT|ET/g, '')
-          .replace(/\/\w+\s+\d+\s+Tf/g, '')
-          .replace(/\d+\s+\d+\s+Td/g, '')
-          .replace(/\d+\.\d+\s+\d+\.\d+\s+\d+\.\d+\s+rg/g, '')
-          .replace(/\(([^)]+)\)\s*Tj/g, '$1 ')
-          .replace(/\[([^\]]+)\]\s*TJ/g, '$1 ')
+    console.log('📄 PDF size:', uint8Array.length, 'bytes');
+    
+    // Method 1: Look for text streams between BT and ET markers
+    let extractedText = '';
+    const textStreamRegex = /BT\s*([\s\S]*?)\s*ET/g;
+    const textStreams = pdfString.match(textStreamRegex);
+    
+    if (textStreams) {
+      console.log('📝 Found', textStreams.length, 'text streams');
+      
+      for (const stream of textStreams) {
+        // Clean text stream and extract readable content
+        let cleanText = stream
+          .replace(/BT|ET/g, '') // Remove text object markers
+          .replace(/\/[A-Za-z]+\s+\d+\.?\d*\s+Tf/g, '') // Remove font definitions
+          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+Td/g, '') // Remove positioning
+          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+rg/g, '') // Remove color
+          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+RG/g, '') // Remove stroke color
+          .replace(/\d+\.?\d*\s+w/g, '') // Remove line width
+          .replace(/[qQ]/g, '') // Remove graphics state
+          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+m/g, '') // Remove move operations
+          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+l/g, '') // Remove line operations
+          .replace(/[Ss]/g, '') // Remove stroke operations
           .trim();
-        extractedText += cleanText + ' ';
+        
+        // Extract text from Tj operators
+        const tjMatches = cleanText.match(/\(([^)]*)\)\s*Tj/g);
+        if (tjMatches) {
+          for (const match of tjMatches) {
+            const text = match.replace(/\(([^)]*)\)\s*Tj/g, '$1');
+            if (text && text.length > 1) {
+              extractedText += text + ' ';
+            }
+          }
+        }
+        
+        // Extract text from TJ operators (array format)
+        const tjArrayMatches = cleanText.match(/\[(.*?)\]\s*TJ/g);
+        if (tjArrayMatches) {
+          for (const match of tjArrayMatches) {
+            const arrayContent = match.replace(/\[(.*?)\]\s*TJ/g, '$1');
+            const textParts = arrayContent.match(/\(([^)]*)\)/g);
+            if (textParts) {
+              for (const part of textParts) {
+                const text = part.replace(/[()]/g, '');
+                if (text && text.length > 1) {
+                  extractedText += text + ' ';
+                }
+              }
+            }
+          }
+        }
       }
-      return extractedText.trim();
     }
     
-    // Fallback: search for common resume keywords and surrounding text
-    const fallbackText = text.match(/[A-Za-z\s]{20,}/g)?.join(' ') || '';
-    return fallbackText.substring(0, 2000);
+    // Method 2: If no text streams found, look for direct text patterns
+    if (!extractedText || extractedText.trim().length < 50) {
+      console.log('🔄 Trying alternative extraction method...');
+      
+      // Look for parentheses-enclosed text which often contains readable content
+      const textMatches = pdfString.match(/\(([^)]{2,})\)/g);
+      if (textMatches) {
+        console.log('📝 Found', textMatches.length, 'text matches');
+        
+        for (const match of textMatches) {
+          const text = match.replace(/[()]/g, '').trim();
+          // Filter out likely non-text content
+          if (text && 
+              text.length > 2 && 
+              text.length < 200 && 
+              !/^[0-9\s\.\-]+$/.test(text) && // Not just numbers
+              !/^[^a-zA-Z]*$/.test(text)) { // Contains letters
+            extractedText += text + ' ';
+          }
+        }
+      }
+    }
+    
+    // Method 3: Look for common resume keywords and surrounding text
+    if (!extractedText || extractedText.trim().length < 50) {
+      console.log('🔄 Trying keyword-based extraction...');
+      
+      const resumeKeywords = ['experience', 'education', 'skills', 'work', 'employment', 'university', 'degree', 'certificate', 'project', 'email', 'phone', 'address'];
+      
+      for (const keyword of resumeKeywords) {
+        const keywordRegex = new RegExp(`(.{0,100}${keyword}.{0,100})`, 'gi');
+        const matches = pdfString.match(keywordRegex);
+        if (matches) {
+          for (const match of matches) {
+            // Extract readable characters
+            const readable = match.replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (readable.length > 10) {
+              extractedText += readable + ' ';
+            }
+          }
+        }
+      }
+    }
+    
+    // Clean up the final extracted text
+    extractedText = extractedText
+      .replace(/\s+/g, ' ') // Multiple spaces to single space
+      .replace(/[^\x20-\x7E\n]/g, '') // Remove non-printable characters
+      .replace(/(.)\1{4,}/g, '$1') // Remove repeated characters
+      .trim();
+    
+    console.log('✅ PDF text extraction completed');
+    console.log('📊 Extracted text length:', extractedText.length);
+    console.log('📄 Text preview:', extractedText.substring(0, 300) + '...');
+    
+    return extractedText;
   } catch (error) {
-    console.error('PDF extraction error:', error);
-    return 'Unable to extract text from PDF. Please ensure the file is a valid PDF document.';
+    console.error('❌ PDF extraction error:', error);
+    throw new Error('Failed to extract text from PDF. Please ensure the file is a valid PDF with readable text.');
   }
 }
 
@@ -81,48 +171,74 @@ async function analyzeWithOpenAI(resumeText: string): Promise<string> {
     throw new Error('OpenAI API key not configured');
   }
 
-  // Trim to 1000 words max
-  const words = resumeText.split(/\s+/);
-  const trimmedText = words.slice(0, 1000).join(' ');
+  console.log('🤖 Preparing text for OpenAI analysis...');
+  
+  // Clean and prepare the text for analysis
+  const cleanedText = resumeText
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s\.,;:!?\-@()]/g, '')
+    .trim();
+  
+  // Limit to reasonable length for API
+  const words = cleanedText.split(/\s+/);
+  const trimmedText = words.slice(0, 1500).join(' ');
+  
+  console.log('📊 Sending', words.length, 'words to OpenAI (trimmed to', trimmedText.split(/\s+/).length, 'words)');
 
-  const prompt = `Summarize this resume briefly.
+  const prompt = `Analyze this resume and provide a structured summary. The resume text may contain some formatting artifacts, so focus on extracting meaningful information.
 
-Key skills
+Please provide:
 
-Most recent or current job title
-
-Years of experience
-
-Any certifications or major achievements
-
-Be concise, clean, and use bullet points if needed.
+1. PROFILE SUMMARY (2-3 sentences about the person's background and expertise)
+2. KEY SKILLS (list 5-8 technical/professional skills)
+3. EXPERIENCE LEVEL (Junior/Mid/Senior based on years of experience mentioned)
+4. CAREER FOCUS (primary field or role type they're targeting)
 
 Resume text:
-${trimmedText}`;
+${trimmedText}
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are a professional resume analyst. Provide clear, concise summaries with bullet points.' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.3,
-      max_tokens: 500,
-    }),
-  });
+Please format your response clearly with these exact section headers so I can parse it properly.`;
 
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+  try {
+    console.log('📡 Making request to OpenAI...');
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a professional resume analyst. Provide clear, structured analysis focusing on extracting meaningful information even from poorly formatted text. Always provide all requested sections.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 800,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const analysis = data.choices[0].message.content;
+    
+    console.log('✅ OpenAI analysis completed');
+    console.log('📝 Analysis preview:', analysis.substring(0, 200) + '...');
+    
+    return analysis;
+  } catch (error) {
+    console.error('❌ OpenAI analysis error:', error);
+    throw new Error(`Failed to analyze resume with AI: ${error.message}`);
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 serve(async (req) => {
@@ -211,11 +327,7 @@ serve(async (req) => {
       );
     }
 
-    // Log extracted text (truncated)
-    const truncatedText = extractedText.length > 200 
-      ? extractedText.substring(0, 200) + '...' 
-      : extractedText;
-    console.log('📝 Extracted text preview:', truncatedText);
+    console.log('📝 Final extracted text length:', extractedText.length);
 
     if (!extractedText || extractedText.length < 50) {
       return new Response(
