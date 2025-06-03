@@ -19,126 +19,110 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Improved PDF text extraction function
+// Enhanced PDF text extraction function
 async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
-    console.log('🔍 Starting improved PDF text extraction...');
+    console.log('🔍 Starting enhanced PDF text extraction...');
     
-    // Convert ArrayBuffer to Uint8Array
     const uint8Array = new Uint8Array(arrayBuffer);
-    
-    // Convert to string for text search
     const pdfString = new TextDecoder('latin1').decode(uint8Array);
     
     console.log('📄 PDF size:', uint8Array.length, 'bytes');
     
-    // Method 1: Look for text streams between BT and ET markers
     let extractedText = '';
-    const textStreamRegex = /BT\s*([\s\S]*?)\s*ET/g;
-    const textStreams = pdfString.match(textStreamRegex);
     
-    if (textStreams) {
-      console.log('📝 Found', textStreams.length, 'text streams');
+    // Method 1: Extract text from BT/ET text objects
+    const textObjectRegex = /BT\s*([\s\S]*?)\s*ET/g;
+    const textObjects = [...pdfString.matchAll(textObjectRegex)];
+    
+    if (textObjects.length > 0) {
+      console.log('📝 Found', textObjects.length, 'text objects');
       
-      for (const stream of textStreams) {
-        // Clean text stream and extract readable content
-        let cleanText = stream
-          .replace(/BT|ET/g, '') // Remove text object markers
-          .replace(/\/[A-Za-z]+\s+\d+\.?\d*\s+Tf/g, '') // Remove font definitions
-          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+Td/g, '') // Remove positioning
-          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+rg/g, '') // Remove color
-          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+\d+\.?\d*\s+RG/g, '') // Remove stroke color
-          .replace(/\d+\.?\d*\s+w/g, '') // Remove line width
-          .replace(/[qQ]/g, '') // Remove graphics state
-          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+m/g, '') // Remove move operations
-          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+l/g, '') // Remove line operations
-          .replace(/[Ss]/g, '') // Remove stroke operations
-          .trim();
+      for (const textObj of textObjects) {
+        const content = textObj[1];
         
-        // Extract text from Tj operators
-        const tjMatches = cleanText.match(/\(([^)]*)\)\s*Tj/g);
-        if (tjMatches) {
-          for (const match of tjMatches) {
-            const text = match.replace(/\(([^)]*)\)\s*Tj/g, '$1');
-            if (text && text.length > 1) {
+        // Extract text from Tj operators: (text) Tj
+        const tjMatches = [...content.matchAll(/\(([^)]*)\)\s*Tj/g)];
+        for (const match of tjMatches) {
+          const text = match[1].replace(/\\[nrt]/g, ' ').trim();
+          if (text.length > 1 && /[a-zA-Z]/.test(text)) {
+            extractedText += text + ' ';
+          }
+        }
+        
+        // Extract text from TJ operators: [(text)] TJ
+        const tjArrayMatches = [...content.matchAll(/\[(.*?)\]\s*TJ/g)];
+        for (const match of tjArrayMatches) {
+          const arrayContent = match[1];
+          const textParts = [...arrayContent.matchAll(/\(([^)]*)\)/g)];
+          for (const part of textParts) {
+            const text = part[1].replace(/\\[nrt]/g, ' ').trim();
+            if (text.length > 1 && /[a-zA-Z]/.test(text)) {
               extractedText += text + ' ';
             }
           }
         }
+      }
+    }
+    
+    // Method 2: Look for parentheses-enclosed text throughout the PDF
+    if (extractedText.length < 100) {
+      console.log('🔄 Using alternative extraction method...');
+      
+      const textMatches = [...pdfString.matchAll(/\(([^)]{3,})\)/g)];
+      console.log('📝 Found', textMatches.length, 'text patterns');
+      
+      for (const match of textMatches) {
+        let text = match[1]
+          .replace(/\\[nrt]/g, ' ')
+          .replace(/\\(.)/g, '$1')
+          .trim();
         
-        // Extract text from TJ operators (array format)
-        const tjArrayMatches = cleanText.match(/\[(.*?)\]\s*TJ/g);
-        if (tjArrayMatches) {
-          for (const match of tjArrayMatches) {
-            const arrayContent = match.replace(/\[(.*?)\]\s*TJ/g, '$1');
-            const textParts = arrayContent.match(/\(([^)]*)\)/g);
-            if (textParts) {
-              for (const part of textParts) {
-                const text = part.replace(/[()]/g, '');
-                if (text && text.length > 1) {
-                  extractedText += text + ' ';
-                }
-              }
-            }
-          }
+        // Filter out non-text content
+        if (text.length > 2 && 
+            text.length < 500 && 
+            /[a-zA-Z]/.test(text) && 
+            !/^[\d\s\.\-\(\)]+$/.test(text) &&
+            !text.includes('obj') &&
+            !text.includes('endobj')) {
+          extractedText += text + ' ';
         }
       }
     }
     
-    // Method 2: If no text streams found, look for direct text patterns
-    if (!extractedText || extractedText.trim().length < 50) {
-      console.log('🔄 Trying alternative extraction method...');
+    // Method 3: Extract readable ASCII text from the entire PDF
+    if (extractedText.length < 100) {
+      console.log('🔄 Using ASCII extraction method...');
       
-      // Look for parentheses-enclosed text which often contains readable content
-      const textMatches = pdfString.match(/\(([^)]{2,})\)/g);
-      if (textMatches) {
-        console.log('📝 Found', textMatches.length, 'text matches');
-        
-        for (const match of textMatches) {
-          const text = match.replace(/[()]/g, '').trim();
-          // Filter out likely non-text content
-          if (text && 
-              text.length > 2 && 
-              text.length < 200 && 
-              !/^[0-9\s\.\-]+$/.test(text) && // Not just numbers
-              !/^[^a-zA-Z]*$/.test(text)) { // Contains letters
-            extractedText += text + ' ';
-          }
-        }
+      // Look for sequences of readable characters
+      const readableText = pdfString.match(/[A-Za-z][A-Za-z\s,.-:;]{10,}/g);
+      if (readableText) {
+        extractedText = readableText
+          .filter(text => 
+            text.length > 10 && 
+            text.length < 200 &&
+            !text.includes('obj') &&
+            !text.includes('stream')
+          )
+          .join(' ');
       }
     }
     
-    // Method 3: Look for common resume keywords and surrounding text
-    if (!extractedText || extractedText.trim().length < 50) {
-      console.log('🔄 Trying keyword-based extraction...');
-      
-      const resumeKeywords = ['experience', 'education', 'skills', 'work', 'employment', 'university', 'degree', 'certificate', 'project', 'email', 'phone', 'address'];
-      
-      for (const keyword of resumeKeywords) {
-        const keywordRegex = new RegExp(`(.{0,100}${keyword}.{0,100})`, 'gi');
-        const matches = pdfString.match(keywordRegex);
-        if (matches) {
-          for (const match of matches) {
-            // Extract readable characters
-            const readable = match.replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim();
-            if (readable.length > 10) {
-              extractedText += readable + ' ';
-            }
-          }
-        }
-      }
-    }
-    
-    // Clean up the final extracted text
+    // Clean up the extracted text
     extractedText = extractedText
-      .replace(/\s+/g, ' ') // Multiple spaces to single space
-      .replace(/[^\x20-\x7E\n]/g, '') // Remove non-printable characters
-      .replace(/(.)\1{4,}/g, '$1') // Remove repeated characters
+      .replace(/\s+/g, ' ')
+      .replace(/[^\x20-\x7E\n]/g, '')
+      .replace(/(.)\1{3,}/g, '$1')
       .trim();
     
     console.log('✅ PDF text extraction completed');
     console.log('📊 Extracted text length:', extractedText.length);
-    console.log('📄 Text preview:', extractedText.substring(0, 300) + '...');
+    
+    if (extractedText.length > 50) {
+      console.log('📄 Text preview:', extractedText.substring(0, 300) + '...');
+    } else {
+      console.log('⚠️ Very little text extracted');
+    }
     
     return extractedText;
   } catch (error) {
@@ -171,36 +155,45 @@ async function analyzeWithOpenAI(resumeText: string): Promise<string> {
     throw new Error('OpenAI API key not configured');
   }
 
-  console.log('🤖 Preparing text for OpenAI analysis...');
+  console.log('🤖 Preparing resume text for OpenAI analysis...');
   
-  // Clean and prepare the text for analysis
+  // Validate that we have meaningful text
+  if (resumeText.length < 50) {
+    throw new Error('Insufficient text extracted from resume for analysis');
+  }
+  
+  // Clean and prepare the text
   const cleanedText = resumeText
     .replace(/\s+/g, ' ')
-    .replace(/[^\w\s\.,;:!?\-@()]/g, '')
+    .replace(/[^\w\s\.,;:!?\-@()#%&]/g, '')
     .trim();
   
-  // Limit to reasonable length for API
+  // Limit to API constraints but keep meaningful content
   const words = cleanedText.split(/\s+/);
-  const trimmedText = words.slice(0, 1500).join(' ');
+  const trimmedText = words.slice(0, 2000).join(' ');
   
   console.log('📊 Sending', words.length, 'words to OpenAI (trimmed to', trimmedText.split(/\s+/).length, 'words)');
+  console.log('📄 Text sample:', trimmedText.substring(0, 200) + '...');
 
-  const prompt = `Analyze this resume and provide a structured summary. The resume text may contain some formatting artifacts, so focus on extracting meaningful information.
+  const prompt = `Analyze this resume text and provide a structured professional summary. Extract meaningful information from the actual resume content provided.
 
-Please provide:
+Resume text to analyze:
+"${trimmedText}"
 
-1. PROFILE SUMMARY (2-3 sentences about the person's background and expertise)
-2. KEY SKILLS (list 5-8 technical/professional skills)
-3. EXPERIENCE LEVEL (Junior/Mid/Senior based on years of experience mentioned)
-4. CAREER FOCUS (primary field or role type they're targeting)
+Please provide exactly the following sections:
 
-Resume text:
-${trimmedText}
+1. PROFILE SUMMARY (2-3 sentences describing the person's professional background, experience level, and key expertise areas based on the resume content)
 
-Please format your response clearly with these exact section headers so I can parse it properly.`;
+2. KEY SKILLS (list 6-8 specific technical or professional skills mentioned in the resume)
+
+3. EXPERIENCE LEVEL (Junior/Mid/Senior based on the years of experience, job titles, and responsibilities mentioned)
+
+4. CAREER FOCUS (the primary field, industry, or role type this person is targeting based on their experience and skills)
+
+Format your response clearly with these exact section headers. Base your analysis entirely on the actual resume content provided - do not make assumptions or add generic content.`;
 
   try {
-    console.log('📡 Making request to OpenAI...');
+    console.log('📡 Making request to OpenAI GPT-4o-mini...');
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -213,12 +206,12 @@ Please format your response clearly with these exact section headers so I can pa
         messages: [
           { 
             role: 'system', 
-            content: 'You are a professional resume analyst. Provide clear, structured analysis focusing on extracting meaningful information even from poorly formatted text. Always provide all requested sections.' 
+            content: 'You are a professional resume analyst. Analyze the provided resume text carefully and extract meaningful insights. Provide structured analysis based only on the content provided. Be specific and accurate.' 
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 800,
+        temperature: 0.2,
+        max_tokens: 1000,
       }),
     });
 
@@ -231,8 +224,9 @@ Please format your response clearly with these exact section headers so I can pa
     const data = await response.json();
     const analysis = data.choices[0].message.content;
     
-    console.log('✅ OpenAI analysis completed');
-    console.log('📝 Analysis preview:', analysis.substring(0, 200) + '...');
+    console.log('✅ OpenAI analysis completed successfully');
+    console.log('📝 Analysis length:', analysis.length);
+    console.log('📄 Analysis preview:', analysis.substring(0, 200) + '...');
     
     return analysis;
   } catch (error) {
@@ -249,7 +243,7 @@ serve(async (req) => {
 
   try {
     const requestBody: RequestBody = await req.json();
-    console.log('📥 Request body:', JSON.stringify(requestBody, null, 2));
+    console.log('📥 Processing request:', JSON.stringify(requestBody, null, 2));
 
     const { user_id, file_name } = requestBody;
 
@@ -269,16 +263,16 @@ serve(async (req) => {
 
     console.log(`🔄 Processing resume: ${file_name} for user: ${user_id}`);
 
-    // Clean the file path - remove any duplicate 'resumes/' prefix
+    // Clean the file path
     let cleanFilePath = file_name;
-    if (cleanFilePath.startsWith('resumes/resumes/')) {
+    if (cleanFilePath.includes('resumes/resumes/')) {
       cleanFilePath = cleanFilePath.replace('resumes/resumes/', 'resumes/');
     }
     if (!cleanFilePath.startsWith('resumes/')) {
       cleanFilePath = `resumes/${cleanFilePath}`;
     }
 
-    console.log(`📁 Cleaned file path: ${cleanFilePath}`);
+    console.log(`📁 Using file path: ${cleanFilePath}`);
 
     // Download file from Supabase Storage
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -304,12 +298,12 @@ serve(async (req) => {
     // Convert file to ArrayBuffer
     const arrayBuffer = await fileData.arrayBuffer();
 
-    // Detect file type and extract text
+    // Extract text from PDF
     let extractedText = '';
     const fileName = cleanFilePath.toLowerCase();
 
     if (fileName.endsWith('.pdf')) {
-      console.log('📄 Extracting text from PDF...');
+      console.log('📄 Processing PDF file...');
       extractedText = await extractPDFText(arrayBuffer);
     } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
       console.log('📝 Extracting text from DOCX...');
@@ -318,7 +312,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Unsupported file type. Only PDF and DOCX files are supported.' 
+          error: 'Currently only PDF and DOCX files are supported for text extraction.' 
         }),
         { 
           status: 400,
@@ -333,7 +327,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Could not extract meaningful text from the file. Please ensure the file contains readable text.' 
+          error: 'Could not extract sufficient text from the file. Please ensure the file contains readable text and is not image-based.' 
         }),
         { 
           status: 400,
@@ -342,10 +336,10 @@ serve(async (req) => {
       );
     }
 
-    // Analyze with OpenAI
-    console.log('🤖 Sending to OpenAI for analysis...');
+    // Analyze with OpenAI using the actual extracted text
+    console.log('🤖 Sending extracted text to OpenAI for analysis...');
     const analysis = await analyzeWithOpenAI(extractedText);
-    console.log('✅ OpenAI analysis completed');
+    console.log('✅ AI analysis completed successfully');
 
     // Save to database
     const { data: insertData, error: insertError } = await supabase
@@ -379,7 +373,8 @@ serve(async (req) => {
         success: true,
         analysis_id: insertData.id,
         analysis: analysis,
-        extracted_text_length: extractedText.length
+        extracted_text_length: extractedText.length,
+        extraction_preview: extractedText.substring(0, 200)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
