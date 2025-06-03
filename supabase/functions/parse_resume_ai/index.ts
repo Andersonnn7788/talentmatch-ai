@@ -12,6 +12,21 @@ interface RequestBody {
   file_name: string;
 }
 
+interface JobSuggestion {
+  title: string;
+  reason: string;
+  keySkills: string[];
+}
+
+interface ResumeAnalysisResult {
+  profileSummary: string;
+  highlightedSkills: string[];
+  experienceLevel: string;
+  careerFocus: string;
+  suggestedJobs: JobSuggestion[];
+  extractedText: string;
+}
+
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -131,31 +146,12 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   }
 }
 
-// Simple DOCX text extraction function
-async function extractDOCXText(arrayBuffer: ArrayBuffer): Promise<string> {
-  try {
-    // Convert to text - this is a simple approach
-    const text = new TextDecoder().decode(arrayBuffer);
-    
-    // Look for readable text patterns in DOCX
-    const textMatches = text.match(/[A-Za-z][A-Za-z\s,.-]{10,}/g);
-    if (textMatches) {
-      return textMatches.join(' ').substring(0, 2000);
-    }
-    
-    return 'Unable to extract text from DOCX. Please ensure the file is a valid Word document.';
-  } catch (error) {
-    console.error('DOCX extraction error:', error);
-    return 'Unable to extract text from DOCX. Please ensure the file is a valid Word document.';
-  }
-}
-
-async function analyzeWithOpenAI(resumeText: string): Promise<string> {
+async function analyzeResumeWithGPT4oMini(resumeText: string, fileName: string): Promise<ResumeAnalysisResult> {
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
 
-  console.log('🤖 Preparing resume text for OpenAI analysis...');
+  console.log('🤖 Starting GPT-4o-mini analysis for resume:', fileName);
   
   // Validate that we have meaningful text
   if (resumeText.length < 50) {
@@ -170,27 +166,39 @@ async function analyzeWithOpenAI(resumeText: string): Promise<string> {
   
   // Limit to API constraints but keep meaningful content
   const words = cleanedText.split(/\s+/);
-  const trimmedText = words.slice(0, 2000).join(' ');
+  const trimmedText = words.slice(0, 3000).join(' ');
   
-  console.log('📊 Sending', words.length, 'words to OpenAI (trimmed to', trimmedText.split(/\s+/).length, 'words)');
-  console.log('📄 Text sample:', trimmedText.substring(0, 200) + '...');
+  console.log('📊 Sending', words.length, 'words to GPT-4o-mini (trimmed to', trimmedText.split(/\s+/).length, 'words)');
 
-  const prompt = `Analyze this resume text and provide a structured professional summary. Extract meaningful information from the actual resume content provided.
+  const prompt = `You are an expert AI Career Advisor for the "TalentMatch.AI" platform. 
 
-Resume text to analyze:
+Analyze this resume text and provide a comprehensive analysis. The resume content is:
+
 "${trimmedText}"
 
-Please provide exactly the following sections:
+Return your analysis ONLY in valid JSON format with this exact structure:
 
-1. PROFILE SUMMARY (2-3 sentences describing the person's professional background, experience level, and key expertise areas based on the resume content)
+{
+  "profileSummary": "2-3 sentence professional summary based on the resume content",
+  "highlightedSkills": ["skill1", "skill2", "skill3", "skill4", "skill5", "skill6"],
+  "experienceLevel": "Junior|Mid|Senior",
+  "careerFocus": "primary career focus/industry based on resume",
+  "suggestedJobs": [
+    {
+      "title": "Job Title",
+      "reason": "Why this job matches the candidate",
+      "keySkills": ["required skill 1", "required skill 2", "required skill 3"]
+    }
+  ]
+}
 
-2. KEY SKILLS (list 6-8 specific technical or professional skills mentioned in the resume)
-
-3. EXPERIENCE LEVEL (Junior/Mid/Senior based on the years of experience, job titles, and responsibilities mentioned)
-
-4. CAREER FOCUS (the primary field, industry, or role type this person is targeting based on their experience and skills)
-
-Format your response clearly with these exact section headers. Base your analysis entirely on the actual resume content provided - do not make assumptions or add generic content.`;
+IMPORTANT RULES:
+1. Base ALL analysis on the actual resume content provided
+2. Extract 6-8 specific skills mentioned in the resume for highlightedSkills
+3. Suggest 3-4 relevant job positions in suggestedJobs array
+4. Determine experience level based on years mentioned or job titles/responsibilities
+5. Return ONLY valid JSON - no additional text or explanations
+6. Ensure all strings are properly escaped for JSON format`;
 
   try {
     console.log('📡 Making request to OpenAI GPT-4o-mini...');
@@ -206,12 +214,13 @@ Format your response clearly with these exact section headers. Base your analysi
         messages: [
           { 
             role: 'system', 
-            content: 'You are a professional resume analyst. Analyze the provided resume text carefully and extract meaningful insights. Provide structured analysis based only on the content provided. Be specific and accurate.' 
+            content: 'You are an expert resume analyst and career advisor. Analyze resumes accurately and provide structured JSON responses based only on the content provided. Be specific and professional.' 
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.2,
-        max_tokens: 1000,
+        temperature: 0.3,
+        max_tokens: 2000,
+        response_format: { type: "json_object" }
       }),
     });
 
@@ -222,16 +231,43 @@ Format your response clearly with these exact section headers. Base your analysi
     }
 
     const data = await response.json();
-    const analysis = data.choices[0].message.content;
+    const analysisText = data.choices[0].message.content;
     
-    console.log('✅ OpenAI analysis completed successfully');
-    console.log('📝 Analysis length:', analysis.length);
-    console.log('📄 Analysis preview:', analysis.substring(0, 200) + '...');
+    console.log('✅ GPT-4o-mini analysis completed');
+    console.log('📝 Raw analysis:', analysisText);
     
-    return analysis;
+    // Parse the JSON response
+    let parsedAnalysis;
+    try {
+      parsedAnalysis = JSON.parse(analysisText);
+    } catch (parseError) {
+      console.error('❌ JSON parsing error:', parseError);
+      console.log('📄 Raw response that failed to parse:', analysisText);
+      throw new Error('Failed to parse AI analysis response as JSON');
+    }
+    
+    // Validate the structure and provide defaults if needed
+    const result: ResumeAnalysisResult = {
+      profileSummary: parsedAnalysis.profileSummary || 'Professional with diverse experience and skills.',
+      highlightedSkills: Array.isArray(parsedAnalysis.highlightedSkills) ? parsedAnalysis.highlightedSkills : ['Communication', 'Problem Solving', 'Technical Skills'],
+      experienceLevel: ['Junior', 'Mid', 'Senior'].includes(parsedAnalysis.experienceLevel) ? parsedAnalysis.experienceLevel : 'Mid',
+      careerFocus: parsedAnalysis.careerFocus || 'Technology and professional services',
+      suggestedJobs: Array.isArray(parsedAnalysis.suggestedJobs) ? parsedAnalysis.suggestedJobs : [
+        {
+          title: 'Professional Role',
+          reason: 'Based on skills and experience shown in resume',
+          keySkills: ['Communication', 'Analysis', 'Problem Solving']
+        }
+      ],
+      extractedText: trimmedText
+    };
+    
+    console.log('✅ Structured analysis completed:', JSON.stringify(result, null, 2));
+    return result;
+    
   } catch (error) {
-    console.error('❌ OpenAI analysis error:', error);
-    throw new Error(`Failed to analyze resume with AI: ${error.message}`);
+    console.error('❌ GPT-4o-mini analysis error:', error);
+    throw new Error(`Failed to analyze resume with GPT-4o-mini: ${error.message}`);
   }
 }
 
@@ -243,7 +279,7 @@ serve(async (req) => {
 
   try {
     const requestBody: RequestBody = await req.json();
-    console.log('📥 Processing request:', JSON.stringify(requestBody, null, 2));
+    console.log('📥 Processing resume analysis request:', JSON.stringify(requestBody, null, 2));
 
     const { user_id, file_name } = requestBody;
 
@@ -305,14 +341,11 @@ serve(async (req) => {
     if (fileName.endsWith('.pdf')) {
       console.log('📄 Processing PDF file...');
       extractedText = await extractPDFText(arrayBuffer);
-    } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-      console.log('📝 Extracting text from DOCX...');
-      extractedText = await extractDOCXText(arrayBuffer);
     } else {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Currently only PDF and DOCX files are supported for text extraction.' 
+          error: 'Currently only PDF files are supported for resume analysis.' 
         }),
         { 
           status: 400,
@@ -327,7 +360,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Could not extract sufficient text from the file. Please ensure the file contains readable text and is not image-based.' 
+          error: 'Could not extract sufficient text from the PDF. Please ensure the file contains readable text and is not image-based.' 
         }),
         { 
           status: 400,
@@ -336,18 +369,20 @@ serve(async (req) => {
       );
     }
 
-    // Analyze with OpenAI using the actual extracted text
-    console.log('🤖 Sending extracted text to OpenAI for analysis...');
-    const analysis = await analyzeWithOpenAI(extractedText);
-    console.log('✅ AI analysis completed successfully');
+    // Analyze with GPT-4o-mini using the actual extracted text
+    console.log('🤖 Sending extracted text to GPT-4o-mini for comprehensive analysis...');
+    const analysisResult = await analyzeResumeWithGPT4oMini(extractedText, file_name);
+    console.log('✅ GPT-4o-mini analysis completed successfully');
 
-    // Save to database
+    // Save to database with structured analysis
+    const analysisForStorage = JSON.stringify(analysisResult, null, 2);
+    
     const { data: insertData, error: insertError } = await supabase
       .from('resume_analysis')
       .insert({
         user_id,
         file_name: cleanFilePath,
-        analysis,
+        analysis: analysisForStorage,
       })
       .select()
       .single();
@@ -372,9 +407,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         analysis_id: insertData.id,
-        analysis: analysis,
-        extracted_text_length: extractedText.length,
-        extraction_preview: extractedText.substring(0, 200)
+        analysis: analysisResult,
+        extracted_text_length: extractedText.length
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -382,12 +416,12 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Parse resume error:', error);
+    console.error('❌ Resume analysis error:', error);
     
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message || 'Failed to parse resume'
+        error: error.message || 'Failed to analyze resume'
       }),
       {
         status: 500,

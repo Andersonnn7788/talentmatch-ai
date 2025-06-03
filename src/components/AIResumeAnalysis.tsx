@@ -3,16 +3,23 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
-import { Loader2, Brain, User, Target, Award, Cpu } from 'lucide-react';
+import { Loader2, Brain, User, Target, Award, Cpu, Briefcase } from 'lucide-react';
 import { testParseResume } from '../services/testResumeParser';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 
-interface ResumeAnalysisData {
-  summary: string;
+interface JobSuggestion {
+  title: string;
+  reason: string;
   keySkills: string[];
+}
+
+interface ResumeAnalysisData {
+  profileSummary: string;
+  highlightedSkills: string[];
   experienceLevel: string;
   careerFocus: string;
+  suggestedJobs: JobSuggestion[];
 }
 
 interface AIResumeAnalysisProps {
@@ -43,14 +50,13 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
     setAnalysis(null);
 
     try {
-      console.log('🧠 Starting AI resume analysis for:', filePath);
+      console.log('🧠 Starting GPT-4o-mini resume analysis for:', filePath);
       
       // Extract just the filename from the full path for the API call
       let cleanFileName = filePath;
       
       // If the filePath includes the full storage path, extract just the filename part
       if (filePath.includes('resumes/')) {
-        // Extract everything after the last 'resumes/'
         const parts = filePath.split('resumes/');
         cleanFileName = parts[parts.length - 1];
       }
@@ -59,75 +65,81 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
       
       const response = await testParseResume({
         user_id: user.id,
-        file_name: cleanFileName // Pass just the filename without path prefix
+        file_name: cleanFileName
       });
 
       if (response.success && response.analysis) {
-        // Parse the analysis response to extract structured data
-        const analysisText = response.analysis;
+        console.log('✅ Analysis response received:', response.analysis);
         
-        // Extract structured data from the analysis text
-        // This is a simple parsing approach - in production you might want more robust parsing
-        const lines = analysisText.split('\n').filter(line => line.trim());
+        let parsedAnalysis: ResumeAnalysisData;
         
-        let summary = '';
-        let keySkills: string[] = [];
-        let experienceLevel = 'Mid';
-        let careerFocus = '';
-        
-        // Parse the analysis text to extract the different sections
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].toLowerCase();
-          
-          if (line.includes('summary') || line.includes('overview')) {
-            // Take the next few lines as summary
-            summary = lines.slice(i + 1, i + 3).join(' ').trim();
-          } else if (line.includes('skills') || line.includes('technologies')) {
-            // Extract skills from the next line
-            const skillsLine = lines[i + 1] || '';
-            keySkills = skillsLine.split(/[,•\-\n]/)
-              .map(skill => skill.trim().replace(/^[•\-\*]\s*/, ''))
-              .filter(skill => skill && skill.length > 1)
-              .slice(0, 8); // Limit to 8 skills
-          } else if (line.includes('experience') && (line.includes('years') || line.includes('level'))) {
-            const expLine = lines[i];
-            if (expLine.match(/\b[0-9]+\s*years?\b/)) {
-              const years = parseInt(expLine.match(/\b([0-9]+)\s*years?\b/)?.[1] || '0');
-              if (years >= 5) experienceLevel = 'Senior';
-              else if (years >= 2) experienceLevel = 'Mid';
-              else experienceLevel = 'Junior';
+        // Check if the analysis is already parsed JSON or needs parsing
+        if (typeof response.analysis === 'string') {
+          try {
+            // Try to parse as JSON first
+            const jsonAnalysis = JSON.parse(response.analysis);
+            parsedAnalysis = {
+              profileSummary: jsonAnalysis.profileSummary || 'Professional with diverse experience.',
+              highlightedSkills: jsonAnalysis.highlightedSkills || ['Communication', 'Problem Solving'],
+              experienceLevel: jsonAnalysis.experienceLevel || 'Mid',
+              careerFocus: jsonAnalysis.careerFocus || 'Technology and professional services',
+              suggestedJobs: jsonAnalysis.suggestedJobs || []
+            };
+          } catch (parseError) {
+            console.warn('📄 Analysis is not JSON, treating as text:', parseError);
+            // Fallback to text parsing for backwards compatibility
+            const analysisText = response.analysis;
+            const lines = analysisText.split('\n').filter(line => line.trim());
+            
+            let summary = '';
+            let keySkills: string[] = [];
+            let experienceLevel = 'Mid';
+            let careerFocus = '';
+            
+            // Parse the analysis text to extract the different sections
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].toLowerCase();
+              
+              if (line.includes('summary') || line.includes('overview')) {
+                summary = lines.slice(i + 1, i + 3).join(' ').trim();
+              } else if (line.includes('skills') || line.includes('technologies')) {
+                const skillsLine = lines[i + 1] || '';
+                keySkills = skillsLine.split(/[,•\-\n]/)
+                  .map(skill => skill.trim().replace(/^[•\-\*]\s*/, ''))
+                  .filter(skill => skill && skill.length > 1)
+                  .slice(0, 8);
+              } else if (line.includes('experience') && (line.includes('years') || line.includes('level'))) {
+                const expLine = lines[i];
+                if (expLine.match(/\b[0-9]+\s*years?\b/)) {
+                  const years = parseInt(expLine.match(/\b([0-9]+)\s*years?\b/)?.[1] || '0');
+                  if (years >= 5) experienceLevel = 'Senior';
+                  else if (years >= 2) experienceLevel = 'Mid';
+                  else experienceLevel = 'Junior';
+                }
+              } else if (line.includes('focus') || line.includes('specializ') || line.includes('position')) {
+                careerFocus = lines[i + 1]?.trim() || lines[i].trim();
+              }
             }
-          } else if (line.includes('focus') || line.includes('specializ') || line.includes('position')) {
-            careerFocus = lines[i + 1]?.trim() || lines[i].trim();
+
+            parsedAnalysis = {
+              profileSummary: summary || 'Professional with experience and skills.',
+              highlightedSkills: keySkills.length > 0 ? keySkills : ['Communication', 'Problem Solving'],
+              experienceLevel,
+              careerFocus: careerFocus || 'Professional services and technology',
+              suggestedJobs: []
+            };
           }
+        } else {
+          // Analysis is already an object
+          parsedAnalysis = response.analysis as ResumeAnalysisData;
         }
-
-        // Fallback parsing if structured extraction didn't work well
-        if (!summary && analysisText.length > 50) {
-          summary = analysisText.substring(0, 200) + '...';
-        }
-        
-        if (keySkills.length === 0) {
-          // Try to extract common tech skills from the entire text
-          const techSkills = ['React', 'Node.js', 'JavaScript', 'TypeScript', 'Python', 'Java', 'AWS', 'Docker', 'SQL', 'PostgreSQL', 'MongoDB', 'Angular', 'Vue.js', 'Express', 'Spring', 'Django', 'Flask', 'Kubernetes', 'Git', 'REST API'];
-          keySkills = techSkills.filter(skill => 
-            analysisText.toLowerCase().includes(skill.toLowerCase())
-          ).slice(0, 6);
-        }
-
-        const parsedAnalysis: ResumeAnalysisData = {
-          summary: summary || 'Professional with experience in software development and technology.',
-          keySkills: keySkills.length > 0 ? keySkills : ['Software Development', 'Problem Solving'],
-          experienceLevel,
-          careerFocus: careerFocus || 'Software development and technology solutions.'
-        };
 
         setAnalysis(parsedAnalysis);
         onAnalysisComplete?.(parsedAnalysis);
 
         toast({
-          title: "Resume Analysis Complete!",
-          description: `AI analysis completed successfully with ${parsedAnalysis.keySkills.length} key skills identified.`,
+          title: "AI Resume Analysis Complete!",
+          description: `GPT-4o-mini analysis completed with ${parsedAnalysis.highlightedSkills.length} skills and ${parsedAnalysis.suggestedJobs.length} job suggestions.`,
         });
 
       } else {
@@ -143,11 +155,11 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
       }
     } catch (error) {
       console.error('❌ Resume analysis error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setError('We couldn\'t analyze your resume. Please try again.');
+      const errorMessage = 'We couldn\'t analyze your resume. Please try again.';
+      setError(errorMessage);
       toast({
         title: "Analysis Error",
-        description: "We couldn't analyze your resume. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -174,7 +186,7 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
         <CardContent>
           <Alert>
             <AlertDescription>
-              Upload a resume to get AI-powered analysis of your skills and experience.
+              Upload a resume to get AI-powered analysis with GPT-4o-mini of your skills and experience.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -187,14 +199,14 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain size={20} />
-          AI Resume Analysis
+          AI Resume Analysis (GPT-4o-mini)
         </CardTitle>
       </CardHeader>
       <CardContent>
         {loading && (
           <div className="flex items-center justify-center p-8">
             <Loader2 size={24} className="animate-spin mr-2" />
-            <span>Analyzing your resume with AI...</span>
+            <span>Analyzing your resume with GPT-4o-mini...</span>
           </div>
         )}
 
@@ -215,7 +227,7 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
                 <h3 className="font-semibold text-blue-700">Profile Summary</h3>
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">
-                {analysis.summary}
+                {analysis.profileSummary}
               </p>
             </div>
 
@@ -241,20 +253,45 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
               </Badge>
             </div>
 
-            {/* Key Skills */}
+            {/* Highlighted Skills */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Cpu size={16} className="text-blue-500" />
-                <h3 className="font-semibold text-blue-700">Key Skills</h3>
+                <h3 className="font-semibold text-blue-700">Highlighted Skills</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                {analysis.keySkills.map((skill, index) => (
+                {analysis.highlightedSkills.map((skill, index) => (
                   <Badge key={index} variant="secondary">
                     {skill}
                   </Badge>
                 ))}
               </div>
             </div>
+
+            {/* Suggested Jobs */}
+            {analysis.suggestedJobs && analysis.suggestedJobs.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Briefcase size={16} className="text-blue-500" />
+                  <h3 className="font-semibold text-blue-700">Suggested Jobs</h3>
+                </div>
+                <div className="space-y-3">
+                  {analysis.suggestedJobs.map((job, index) => (
+                    <div key={index} className="p-3 border rounded-lg bg-gray-50">
+                      <h4 className="font-medium text-gray-900">{job.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{job.reason}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {job.keySkills.map((skill, skillIndex) => (
+                          <Badge key={skillIndex} variant="outline" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
