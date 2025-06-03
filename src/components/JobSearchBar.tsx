@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,16 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
+    // Validate file type - only allow PDFs for now since that's what our Edge Function handles
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast({
+        title: "Unsupported file type",
+        description: "Please upload a PDF file. Other formats will be supported soon.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -59,7 +70,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
       if (result.success && result.fileUrl && result.filePath) {
         setLastUploadedResumeUrl(result.fileUrl);
         setLastUploadedFileName(file.name);
-        setLastUploadedFilePath(result.filePath); // Store the full file path
+        setLastUploadedFilePath(result.filePath);
         // Store in localStorage for AI assistant access
         localStorage.setItem('lastUploadedResumeUrl', result.fileUrl);
         console.log('✅ Resume uploaded successfully to:', result.fileUrl);
@@ -282,11 +293,11 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
                   ref={fileInputRef}
                   type="file" 
                   className="hidden" 
-                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                  accept=".pdf"
                   onChange={handleResumeUpload}
                 />
                 <span className="text-sm text-muted-foreground">
-                  {lastUploadedResumeUrl ? '✅ Resume uploaded' : 'PDF, DOC, DOCX, images (5MB max)'}
+                  {lastUploadedResumeUrl ? '✅ Resume uploaded' : 'PDF files only (5MB max)'}
                 </span>
               </div>
               
