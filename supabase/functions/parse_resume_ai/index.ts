@@ -35,10 +35,10 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Enhanced PDF text extraction with better parsing
+// Comprehensive PDF text extraction with multiple fallback methods
 async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
-    console.log('🔍 Starting enhanced PDF text extraction...');
+    console.log('🔍 Starting comprehensive PDF text extraction...');
     
     const uint8Array = new Uint8Array(arrayBuffer);
     console.log('📄 PDF size:', uint8Array.length, 'bytes');
@@ -49,7 +49,7 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
     let extractedText = '';
     const textChunks: string[] = [];
     
-    // Method 1: Look for text objects with better pattern matching
+    // Method 1: Look for text objects with comprehensive pattern matching
     console.log('🔍 Method 1: Extracting from text objects...');
     const textObjectPattern = /BT\s*([\s\S]*?)\s*ET/g;
     const textObjects = [...pdfString.matchAll(textObjectPattern)];
@@ -59,12 +59,14 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
     for (const textObj of textObjects) {
       const content = textObj[1];
       
-      // Extract text from various PDF text operators
+      // Extract text from various PDF text operators with better decoding
       const textPatterns = [
-        /\(([^)]+)\)\s*Tj/g,
-        /\(([^)]+)\)\s*TJ/g,
+        /\(([^)]*)\)\s*Tj/g,
+        /\(([^)]*)\)\s*TJ/g,
         /\[(.*?)\]\s*TJ/g,
-        /<([0-9a-fA-F\s]+)>\s*Tj/g
+        /<([0-9a-fA-F\s]+)>\s*Tj/g,
+        /\(([^)]*)\)\s*'/g,
+        /\(([^)]*)\)\s*"/g
       ];
       
       for (const pattern of textPatterns) {
@@ -87,39 +89,53 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
             }
             text = decoded;
           } else {
-            // Clean escape sequences
+            // Clean escape sequences and decode common PDF text encoding
             text = text
-              .replace(/\\n/g, ' ')
-              .replace(/\\r/g, ' ')
-              .replace(/\\t/g, ' ')
+              .replace(/\\n/g, '\n')
+              .replace(/\\r/g, '\n')
+              .replace(/\\t/g, '\t')
               .replace(/\\(.)/g, '$1')
+              .replace(/\\\//g, '/')
+              .replace(/\\b/g, '')
+              .replace(/\\f/g, '')
               .trim();
           }
           
-          if (text.length > 1 && /[a-zA-Z]/.test(text)) {
+          if (text.length > 1 && /[a-zA-Z0-9]/.test(text)) {
             textChunks.push(text);
           }
         }
       }
     }
     
-    // Method 2: Direct text pattern extraction for common resume content
-    console.log('🔍 Method 2: Direct pattern extraction...');
+    // Method 2: Enhanced direct pattern extraction for resume content
+    console.log('🔍 Method 2: Enhanced pattern extraction...');
     const resumePatterns = [
-      // Email addresses
+      // Contact information
       /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-      // Phone numbers
       /(\+?\d{1,4}[\s\-]?\(?\d{1,4}\)?[\s\-]?\d{1,4}[\s\-]?\d{1,9})/g,
-      // Names (capitalized words)
-      /([A-Z][a-z]+\s+[A-Z][a-z]+)/g,
-      // Common resume sections
-      /(EXPERIENCE|EDUCATION|SKILLS|SUMMARY|OBJECTIVE|CONTACT|PROJECTS|CERTIFICATIONS|LANGUAGES)/gi,
-      // Job titles and companies
-      /(Engineer|Developer|Manager|Analyst|Specialist|Assistant|Director|Coordinator|Consultant|Designer|Administrator|Technician)[\s\w]*/gi,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g,
+      
+      // Resume sections and content
+      /(EXPERIENCE|EDUCATION|SKILLS|SUMMARY|OBJECTIVE|CONTACT|PROJECTS|CERTIFICATIONS|LANGUAGES|WORK\s+HISTORY|EMPLOYMENT|QUALIFICATIONS)/gi,
+      
+      // Job titles and roles
+      /(Software\s+Engineer|Developer|Data\s+Scientist|Product\s+Manager|Business\s+Analyst|Project\s+Manager|Marketing\s+Manager|Sales\s+Representative|Designer|Consultant|Administrator|Technician|Coordinator|Specialist|Director|Senior|Junior|Lead|Principal)/gi,
+      
+      // Companies and organizations
+      /(Inc\.|LLC|Corp\.|Corporation|Company|Ltd\.|Limited|University|College|Institute)/gi,
+      
+      // Skills and technologies
+      /(JavaScript|Python|Java|React|Node\.js|SQL|HTML|CSS|AWS|Docker|Kubernetes|Git|Angular|Vue|TypeScript|MongoDB|PostgreSQL|Machine\s+Learning|Data\s+Analysis|Project\s+Management|Microsoft\s+Office|Excel|PowerPoint|Photoshop|Figma)/gi,
+      
       // Education keywords
-      /(Bachelor|Master|PhD|Degree|University|College|School|Certificate)[\s\w]*/gi,
-      // Technical skills
-      /(JavaScript|Python|Java|React|Node\.js|SQL|HTML|CSS|AWS|Docker|Kubernetes|Git|Angular|Vue|TypeScript|MongoDB|PostgreSQL)[\s\w]*/gi
+      /(Bachelor|Master|PhD|Degree|Diploma|Certificate|Certification|GPA|Grade|University|College|School)/gi,
+      
+      // Dates and years
+      /(\b(?:19|20)\d{2}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b)/gi,
+      
+      // Common resume phrases
+      /(years?\s+of\s+experience|responsible\s+for|managed|developed|implemented|designed|created|led|coordinated|collaborated|achieved|improved|increased|decreased|reduced)/gi
     ];
     
     for (const pattern of resumePatterns) {
@@ -132,7 +148,7 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
       }
     }
     
-    // Method 3: Stream content extraction with better filtering
+    // Method 3: Stream content with better text reconstruction
     console.log('🔍 Method 3: Stream content extraction...');
     const streamPattern = /stream\s*([\s\S]*?)\s*endstream/g;
     const streams = [...pdfString.matchAll(streamPattern)];
@@ -140,8 +156,8 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
     for (const stream of streams) {
       const streamContent = stream[1];
       
-      // Look for readable text sequences
-      const readableTextPattern = /[A-Za-z][A-Za-z0-9\s\.,;:!?\-@()#%&+=/]{4,}/g;
+      // Look for readable text sequences with better filtering
+      const readableTextPattern = /\b[A-Za-z][A-Za-z0-9\s\.,;:!?\-@()#%&+=/]{3,}\b/g;
       const readableMatches = streamContent.match(readableTextPattern) || [];
       
       for (const match of readableMatches) {
@@ -150,55 +166,86 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
           .replace(/\s+/g, ' ')
           .trim();
         
-        if (cleaned.length > 3 && /[a-zA-Z]/.test(cleaned)) {
+        if (cleaned.length > 3 && /[a-zA-Z]/.test(cleaned) && !cleaned.match(/^[0-9\s]+$/)) {
           textChunks.push(cleaned);
         }
       }
     }
     
-    // Method 4: Fallback ASCII extraction
-    if (textChunks.length < 5) {
-      console.log('🔄 Method 4: Fallback ASCII extraction...');
+    // Method 4: Fallback with improved ASCII extraction
+    if (textChunks.length < 10) {
+      console.log('🔄 Method 4: Enhanced fallback extraction...');
       
-      // Extract readable ASCII sequences
-      const asciiPattern = /[a-zA-Z][a-zA-Z0-9\s\.,;:!?\-@()#%&+=/]{3,50}/g;
-      const asciiMatches = pdfString.match(asciiPattern) || [];
+      // Try to find text between common PDF delimiters
+      const delimiterPatterns = [
+        /\((.*?)\)/g,
+        /\[(.*?)\]/g,
+        /\<(.*?)\>/g
+      ];
       
-      for (const match of asciiMatches) {
-        const cleaned = match.trim();
-        // Filter out PDF structure elements
-        if (cleaned.length > 3 && 
-            /[a-zA-Z]/.test(cleaned) && 
-            !cleaned.match(/^(obj|endobj|stream|endstream|xref|trailer|Type|Font|Length|Filter|Width|Height|FlateDecode|DeviceRGB)/) &&
-            cleaned.length < 100) {
-          textChunks.push(cleaned);
+      for (const pattern of delimiterPatterns) {
+        const matches = [...pdfString.matchAll(pattern)];
+        for (const match of matches) {
+          const text = match[1];
+          if (text && text.length > 2 && /[a-zA-Z]/.test(text) && text.length < 200) {
+            const cleaned = text
+              .replace(/[^\w\s\.,;:!?\-@()#%&+=/]/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            
+            if (cleaned.length > 3) {
+              textChunks.push(cleaned);
+            }
+          }
         }
       }
     }
     
-    // Clean and combine extracted text
-    const uniqueChunks = [...new Set(textChunks)];
+    // Clean and combine extracted text with better deduplication
+    const uniqueChunks = [...new Set(textChunks)]
+      .filter(chunk => {
+        // Filter out obvious PDF artifacts and ensure meaningful content
+        return chunk && 
+               chunk.length > 2 && 
+               chunk.length < 500 &&
+               /[a-zA-Z]/.test(chunk) &&
+               !chunk.match(/^(obj|endobj|stream|endstream|xref|trailer|Type|Font|Length|Filter|Width|Height|FlateDecode|DeviceRGB|BT|ET|Tf|Td|Tj|TJ)$/i) &&
+               !chunk.match(/^[0-9\s\.]+$/) &&
+               !chunk.match(/^[^\w\s]+$/);
+      });
+    
     extractedText = uniqueChunks
-      .filter(chunk => chunk && chunk.length > 2)
       .join(' ')
       .replace(/\s+/g, ' ')
-      .replace(/(.)\1{3,}/g, '$1$1') // Remove excessive repeated characters
+      .replace(/(.)\1{4,}/g, '$1$1') // Remove excessive repeated characters
       .trim();
     
     console.log('✅ PDF text extraction completed');
     console.log('📊 Extracted text length:', extractedText.length);
     console.log('📄 Unique text chunks found:', uniqueChunks.length);
     
-    if (extractedText.length > 50) {
-      console.log('📄 Text preview:', extractedText.substring(0, 300) + '...');
-      return extractedText;
+    if (extractedText.length > 100) {
+      console.log('📄 Text preview:', extractedText.substring(0, 500) + '...');
+      
+      // Additional validation for meaningful content
+      const wordCount = extractedText.split(/\s+/).length;
+      const letterCount = (extractedText.match(/[a-zA-Z]/g) || []).length;
+      const letterRatio = letterCount / extractedText.length;
+      
+      console.log('📊 Text quality metrics - Words:', wordCount, 'Letter ratio:', letterRatio.toFixed(2));
+      
+      if (wordCount > 10 && letterRatio > 0.3) {
+        return extractedText;
+      } else {
+        throw new Error('Extracted text appears to be corrupted or contains insufficient meaningful content');
+      }
     } else {
-      throw new Error('Could not extract sufficient readable text from PDF. The file may be image-based, heavily formatted, or encrypted.');
+      throw new Error('Could not extract sufficient readable text from PDF. The file may be image-based, heavily formatted, corrupted, or encrypted.');
     }
     
   } catch (error) {
     console.error('❌ PDF extraction error:', error);
-    throw new Error('Failed to extract text from PDF: ' + error.message);
+    throw new Error('Failed to extract readable text from PDF: ' + error.message);
   }
 }
 
@@ -212,61 +259,72 @@ async function analyzeResumeWithGPT4oMini(resumeText: string, fileName: string):
   console.log('📄 Resume text preview:', resumeText.substring(0, 300) + '...');
   
   // Validate that we have meaningful text
-  if (resumeText.length < 50) {
-    throw new Error('Insufficient text extracted from resume for analysis');
+  if (resumeText.length < 100) {
+    throw new Error('Insufficient text extracted from resume for meaningful analysis');
+  }
+  
+  // Check for corrupted or meaningless text
+  const wordCount = resumeText.split(/\s+/).length;
+  const letterCount = (resumeText.match(/[a-zA-Z]/g) || []).length;
+  const letterRatio = letterCount / resumeText.length;
+  
+  if (wordCount < 20 || letterRatio < 0.3) {
+    throw new Error('Extracted text appears corrupted or contains insufficient meaningful content');
   }
   
   // Clean and prepare the text for analysis
   const cleanedText = resumeText
     .replace(/\s+/g, ' ')
+    .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters that might be artifacts
     .trim();
   
   // Limit text length for API constraints
   const words = cleanedText.split(/\s+/);
-  const maxWords = 2000;
+  const maxWords = 3000;
   const trimmedText = words.slice(0, maxWords).join(' ');
   
   console.log('📊 Sending text to GPT-4o-mini - Words:', trimmedText.split(/\s+/).length);
 
-  const prompt = `You are an expert AI Career Advisor analyzing a candidate's resume.
+  const prompt = `You are an expert AI Career Advisor. Analyze this resume and provide a comprehensive assessment.
 
 RESUME CONTENT:
 "${trimmedText}"
 
-Please analyze this resume and provide a comprehensive assessment. Return your analysis ONLY in valid JSON format with this exact structure:
+Please analyze this resume thoroughly and provide your assessment in EXACTLY this JSON format:
 
 {
-  "profileSummary": "A 2-3 sentence professional summary based on the actual resume content",
-  "highlightedSkills": ["skill1", "skill2", "skill3", "skill4", "skill5", "skill6"],
+  "profileSummary": "A detailed 2-3 sentence professional summary based on the actual resume content",
+  "highlightedSkills": ["skill1", "skill2", "skill3", "skill4", "skill5", "skill6", "skill7", "skill8"],
   "experienceLevel": "Junior|Mid|Senior",
-  "careerFocus": "Primary career focus/industry based on resume content",
+  "careerFocus": "Primary career focus/industry based on actual resume content",
   "suggestedJobs": [
     {
       "title": "Job Title 1",
-      "reason": "Why this job matches the candidate based on their experience",
+      "reason": "Specific reason why this job matches based on the candidate's actual experience and skills",
       "keySkills": ["required skill 1", "required skill 2", "required skill 3"]
     },
     {
       "title": "Job Title 2", 
-      "reason": "Why this job matches the candidate based on their experience",
+      "reason": "Specific reason why this job matches based on the candidate's actual experience and skills",
       "keySkills": ["required skill 1", "required skill 2", "required skill 3"]
     },
     {
       "title": "Job Title 3",
-      "reason": "Why this job matches the candidate based on their experience", 
+      "reason": "Specific reason why this job matches based on the candidate's actual experience and skills", 
       "keySkills": ["required skill 1", "required skill 2", "required skill 3"]
     }
   ]
 }
 
-ANALYSIS RULES:
-1. Base ALL analysis on the actual resume content provided above
-2. Extract 6-8 specific skills that are mentioned or clearly implied in the resume
-3. Suggest 3-4 relevant job positions that match the candidate's background
-4. Determine experience level based on years mentioned, job titles, or responsibilities
-5. Identify the primary career focus/industry from the resume content
-6. Return ONLY valid JSON - no additional text or explanations
-7. If resume content is unclear, make reasonable inferences based on available information`;
+CRITICAL REQUIREMENTS:
+1. Base ALL analysis ONLY on the actual resume content provided above
+2. Extract 6-8 specific skills that are actually mentioned in the resume
+3. Suggest 3-4 highly relevant job positions that match the candidate's actual background
+4. Determine experience level based on actual years mentioned, job titles, or responsibilities described
+5. Identify the primary career focus/industry from the actual resume content
+6. Return ONLY valid JSON - no additional text, explanations, or formatting
+7. If the resume content seems unclear, make your best professional assessment based on available information
+8. Ensure all suggested jobs are realistic and match the candidate's actual experience level and skills`;
 
   try {
     console.log('📡 Making request to OpenAI GPT-4o-mini...');
@@ -282,12 +340,12 @@ ANALYSIS RULES:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert resume analyst. Analyze resumes accurately and provide structured JSON responses based only on the content provided.' 
+            content: 'You are an expert resume analyst and career advisor. Analyze resumes accurately and provide structured JSON responses based only on the actual content provided. Always return valid JSON format.' 
           },
           { role: 'user', content: prompt }
         ],
         temperature: 0.3,
-        max_tokens: 1500,
+        max_tokens: 2000,
         response_format: { type: "json_object" }
       }),
     });
@@ -310,12 +368,19 @@ ANALYSIS RULES:
       parsedAnalysis = JSON.parse(analysisText);
     } catch (parseError) {
       console.error('❌ JSON parsing error:', parseError);
-      throw new Error('Failed to parse AI analysis response as JSON');
+      throw new Error('Failed to parse AI analysis response as valid JSON');
     }
     
-    // Validate and structure the response
+    // Validate and ensure we have good data
+    if (!parsedAnalysis.profileSummary || 
+        !Array.isArray(parsedAnalysis.highlightedSkills) ||
+        parsedAnalysis.highlightedSkills.length === 0) {
+      throw new Error('AI analysis returned incomplete or invalid data');
+    }
+    
+    // Structure the response with proper validation
     const result: ResumeAnalysisResult = {
-      profileSummary: parsedAnalysis.profileSummary || 'Professional with demonstrated experience and skills.',
+      profileSummary: parsedAnalysis.profileSummary,
       highlightedSkills: Array.isArray(parsedAnalysis.highlightedSkills) ? 
         parsedAnalysis.highlightedSkills.slice(0, 8) : 
         ['Communication', 'Problem Solving', 'Technical Skills', 'Project Management'],
@@ -323,17 +388,16 @@ ANALYSIS RULES:
         parsedAnalysis.experienceLevel : 'Mid',
       careerFocus: parsedAnalysis.careerFocus || 'Professional services',
       suggestedJobs: Array.isArray(parsedAnalysis.suggestedJobs) ? 
-        parsedAnalysis.suggestedJobs.slice(0, 4) : [
-          {
-            title: 'Professional Specialist',
-            reason: 'Based on skills and experience demonstrated in resume',
-            keySkills: ['Communication', 'Analysis', 'Problem Solving']
-          }
-        ],
+        parsedAnalysis.suggestedJobs.slice(0, 4).map(job => ({
+          title: job.title || 'Professional Role',
+          reason: job.reason || 'Based on skills and experience demonstrated in resume',
+          keySkills: Array.isArray(job.keySkills) ? job.keySkills.slice(0, 5) : ['Communication', 'Analysis', 'Problem Solving']
+        })) : [],
       extractedText: trimmedText
     };
     
     console.log('✅ Structured analysis completed successfully');
+    console.log('📊 Final result - Skills:', result.highlightedSkills.length, 'Jobs:', result.suggestedJobs.length);
     
     return result;
     
@@ -429,11 +493,11 @@ serve(async (req) => {
     console.log('📝 Final extracted text length:', extractedText.length);
     console.log('📄 Extracted text quality check - readable characters:', /[a-zA-Z]/.test(extractedText));
 
-    if (!extractedText || extractedText.length < 50) {
+    if (!extractedText || extractedText.length < 100) {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Could not extract sufficient readable text from the PDF. Please ensure the file contains readable text and is not image-based or corrupted.' 
+          error: 'Could not extract sufficient readable text from the PDF. Please ensure the file contains readable text and is not image-based, corrupted, or heavily formatted.' 
         }),
         { 
           status: 400,

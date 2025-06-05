@@ -79,59 +79,34 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
             // Try to parse as JSON first
             const jsonAnalysis = JSON.parse(response.analysis);
             parsedAnalysis = {
-              profileSummary: jsonAnalysis.profileSummary || 'Professional with diverse experience.',
-              highlightedSkills: jsonAnalysis.highlightedSkills || ['Communication', 'Problem Solving'],
-              experienceLevel: jsonAnalysis.experienceLevel || 'Mid',
+              profileSummary: jsonAnalysis.profileSummary || 'Unable to generate profile summary from the resume content.',
+              highlightedSkills: Array.isArray(jsonAnalysis.highlightedSkills) && jsonAnalysis.highlightedSkills.length > 0 
+                ? jsonAnalysis.highlightedSkills 
+                : ['Communication', 'Problem Solving', 'Technical Skills'],
+              experienceLevel: ['Junior', 'Mid', 'Senior'].includes(jsonAnalysis.experienceLevel) 
+                ? jsonAnalysis.experienceLevel 
+                : 'Mid',
               careerFocus: jsonAnalysis.careerFocus || 'Technology and professional services',
-              suggestedJobs: jsonAnalysis.suggestedJobs || []
+              suggestedJobs: Array.isArray(jsonAnalysis.suggestedJobs) && jsonAnalysis.suggestedJobs.length > 0
+                ? jsonAnalysis.suggestedJobs 
+                : []
             };
           } catch (parseError) {
             console.warn('📄 Analysis is not JSON, treating as text:', parseError);
-            // Fallback to text parsing for backwards compatibility
-            const analysisText = response.analysis;
-            const lines = analysisText.split('\n').filter(line => line.trim());
-            
-            let summary = '';
-            let keySkills: string[] = [];
-            let experienceLevel = 'Mid';
-            let careerFocus = '';
-            
-            // Parse the analysis text to extract the different sections
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i].toLowerCase();
-              
-              if (line.includes('summary') || line.includes('overview')) {
-                summary = lines.slice(i + 1, i + 3).join(' ').trim();
-              } else if (line.includes('skills') || line.includes('technologies')) {
-                const skillsLine = lines[i + 1] || '';
-                keySkills = skillsLine.split(/[,•\-\n]/)
-                  .map(skill => skill.trim().replace(/^[•\-\*]\s*/, ''))
-                  .filter(skill => skill && skill.length > 1)
-                  .slice(0, 8);
-              } else if (line.includes('experience') && (line.includes('years') || line.includes('level'))) {
-                const expLine = lines[i];
-                if (expLine.match(/\b[0-9]+\s*years?\b/)) {
-                  const years = parseInt(expLine.match(/\b([0-9]+)\s*years?\b/)?.[1] || '0');
-                  if (years >= 5) experienceLevel = 'Senior';
-                  else if (years >= 2) experienceLevel = 'Mid';
-                  else experienceLevel = 'Junior';
-                }
-              } else if (line.includes('focus') || line.includes('specializ') || line.includes('position')) {
-                careerFocus = lines[i + 1]?.trim() || lines[i].trim();
-              }
-            }
-
-            parsedAnalysis = {
-              profileSummary: summary || 'Professional with experience and skills.',
-              highlightedSkills: keySkills.length > 0 ? keySkills : ['Communication', 'Problem Solving'],
-              experienceLevel,
-              careerFocus: careerFocus || 'Professional services and technology',
-              suggestedJobs: []
-            };
+            // If it's not JSON, it means the extraction failed and we got an error message
+            throw new Error('Failed to extract readable text from the resume. The PDF may be corrupted, image-based, or heavily formatted.');
           }
         } else {
           // Analysis is already an object
           parsedAnalysis = response.analysis as ResumeAnalysisData;
+        }
+
+        // Validate that we got meaningful analysis
+        if (!parsedAnalysis.profileSummary || 
+            parsedAnalysis.profileSummary.includes('obfuscated') || 
+            parsedAnalysis.profileSummary.includes('encoded') ||
+            parsedAnalysis.profileSummary.includes('difficult to extract')) {
+          throw new Error('The resume text extraction failed. Please ensure your PDF contains readable text and try uploading again.');
         }
 
         setAnalysis(parsedAnalysis);
@@ -139,28 +114,28 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
 
         toast({
           title: "AI Resume Analysis Complete!",
-          description: `GPT-4o-mini analysis completed with ${parsedAnalysis.highlightedSkills.length} skills and ${parsedAnalysis.suggestedJobs.length} job suggestions.`,
+          description: `GPT-4o-mini analysis completed with ${parsedAnalysis.highlightedSkills.length} skills identified and ${parsedAnalysis.suggestedJobs.length} job suggestions.`,
         });
 
       } else {
         const errorMsg = response.error || 'Failed to analyze resume';
         setError(errorMsg);
         toast({
-          title: "Analysis Failed",
+          title: "Analysis Failed", 
           description: errorMsg.includes('File not found') 
             ? "We couldn't find your resume file. Please try uploading again."
-            : "We couldn't analyze your resume. Please try again.",
+            : "We couldn't analyze your resume. The file may be corrupted or unreadable. Please try uploading a different PDF.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('❌ Resume analysis error:', error);
-      const errorMessage = 'We couldn\'t analyze your resume. Please try again.';
+      const errorMessage = error instanceof Error ? error.message : 'We couldn\'t analyze your resume. Please try again with a different PDF file.';
       setError(errorMessage);
       toast({
         title: "Analysis Error",
         description: errorMessage,
-        variant: "destructive",
+        variant: "destructive", 
       });
     } finally {
       setLoading(false);
