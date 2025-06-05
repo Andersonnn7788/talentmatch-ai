@@ -2,11 +2,12 @@ import React, { useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Alert, AlertDescription } from './ui/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
 import { uploadResumeToSupabase, deleteResumeFromSupabase } from '../services/resumeUpload';
-import { Upload, File, Trash2, Download, CheckCircle } from 'lucide-react';
-import ResumeViewer from './ResumeViewer';
+import { validatePDFFile, getPDFValidationMessage } from '../services/pdfValidator';
+import { Upload, File, Trash2, Download, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 
 interface ResumeUploadProps {
   currentResumeUrl?: string;
@@ -28,6 +29,8 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -37,17 +40,50 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
-    setUploading(true);
-    console.log('📤 Starting file upload:', file.name);
+    setValidating(true);
+    setValidationResult(null);
 
     try {
+      // Client-side PDF validation
+      console.log('🔍 Validating PDF file:', file.name);
+      const validation = await validatePDFFile(file);
+      setValidationResult(validation);
+
+      if (!validation.isValid) {
+        console.error('❌ PDF validation failed:', validation.errors);
+        toast({
+          title: "Invalid PDF file",
+          description: validation.errors.join('. '),
+          variant: "destructive",
+        });
+        setValidating(false);
+        return;
+      }
+
+      if (validation.warnings.length > 0) {
+        console.warn('⚠️ PDF validation warnings:', validation.warnings);
+        toast({
+          title: "PDF validation warnings",
+          description: validation.warnings.join('. ') + ' Processing will continue.',
+          variant: "default",
+        });
+      }
+
+      console.log('✅ PDF validation passed:', validation.info);
+
+      // Proceed with upload
+      setUploading(true);
+      console.log('📤 Starting file upload:', file.name);
+      
       const result = await uploadResumeToSupabase(file, user.id);
 
       if (result.success && result.fileUrl && result.filePath) {
         console.log('✅ Upload successful');
+        localStorage.setItem('lastUploadedResumeUrl', result.fileUrl);
+        
         toast({
           title: "Resume uploaded successfully!",
-          description: "Your resume has been uploaded and saved to your profile.",
+          description: "Your resume has been uploaded and AI analysis will begin automatically.",
         });
         onUploadSuccess?.(result.fileUrl, result.filePath);
       } else {
@@ -62,12 +98,12 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
       console.error('❌ Upload error:', error);
       toast({
         title: "Upload error",
-        description: "An unexpected error occurred while uploading your resume.",
+        description: "An unexpected error occurred while processing your resume.",
         variant: "destructive",
       });
     } finally {
       setUploading(false);
-      // Reset file input
+      setValidating(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -118,7 +154,7 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf"
           onChange={handleFileChange}
           className="hidden"
         />
@@ -152,11 +188,11 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
             size="sm"
             variant="outline"
             onClick={handleFileSelect}
-            disabled={uploading}
+            disabled={uploading || validating}
             className="flex items-center gap-2"
           >
             <Upload size={14} />
-            {uploading ? 'Uploading...' : 'Upload Resume'}
+            {uploading ? 'Uploading...' : validating ? 'Validating...' : 'Upload Resume'}
           </Button>
         )}
       </div>
@@ -175,10 +211,51 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf"
           onChange={handleFileChange}
           className="hidden"
         />
+
+        {/* PDF Validation Results */}
+        {validationResult && (
+          <div className="mb-4">
+            {validationResult.isValid ? (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  PDF validation passed. {getPDFValidationMessage(validationResult)}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {getPDFValidationMessage(validationResult)}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {validationResult.info && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-2">
+                  <span>Size: {(validationResult.info.size / 1024 / 1024).toFixed(2)}MB</span>
+                  {validationResult.info.version && <span>PDF {validationResult.info.version}</span>}
+                  {validationResult.info.hasText ? (
+                    <Badge variant="outline" className="text-xs">
+                      <CheckCircle size={10} className="mr-1" />
+                      Contains text
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs">
+                      <Info size={10} className="mr-1" />
+                      May need OCR
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {currentResumeUrl ? (
           <div className="space-y-4">
@@ -190,7 +267,7 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
                 <div>
                   <p className="font-medium">Resume uploaded</p>
                   <p className="text-sm text-muted-foreground">
-                    PDF/Word document
+                    PDF document
                   </p>
                 </div>
               </div>
@@ -217,12 +294,12 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
             
             <Button
               onClick={handleFileSelect}
-              disabled={uploading}
+              disabled={uploading || validating}
               variant="outline"
               className="w-full"
             >
               <Upload size={16} className="mr-2" />
-              {uploading ? 'Uploading...' : 'Replace Resume'}
+              {uploading ? 'Uploading...' : validating ? 'Validating...' : 'Replace Resume'}
             </Button>
           </div>
         ) : (
@@ -234,15 +311,17 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({
               <Upload size={48} className="mx-auto text-muted-foreground mb-4" />
               <h3 className="font-medium mb-2">Upload your resume</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Choose a PDF or Word document (max 5MB)
+                Choose a PDF document (max 10MB)
               </p>
-              <Button disabled={uploading}>
-                {uploading ? 'Uploading...' : 'Choose File'}
+              <Button disabled={uploading || validating}>
+                {uploading ? 'Uploading...' : validating ? 'Validating...' : 'Choose File'}
               </Button>
             </div>
             
             <div className="text-xs text-muted-foreground text-center">
-              Supported formats: PDF, DOC, DOCX • Maximum size: 5MB
+              Supported format: PDF only • Maximum size: 10MB
+              <br />
+              For best results, use text-based PDFs (not scanned images)
             </div>
           </div>
         )}

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
-import { Loader2, Brain, User, Target, Award, Cpu, Briefcase } from 'lucide-react';
+import { Loader2, Brain, User, Target, Award, Cpu, Briefcase, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
 import { testParseResume } from '../services/testResumeParser';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
@@ -38,6 +38,7 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
   const [analysis, setAnalysis] = useState<ResumeAnalysisData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<any>(null);
 
   const analyzeResume = async () => {
     if (!filePath || !user) {
@@ -48,14 +49,12 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
     setLoading(true);
     setError(null);
     setAnalysis(null);
+    setDiagnostics(null);
 
     try {
-      console.log('🧠 Starting GPT-4o-mini resume analysis for:', filePath);
+      console.log('🧠 Starting enhanced GPT-4o-mini resume analysis for:', filePath);
       
-      // Extract just the filename from the full path for the API call
       let cleanFileName = filePath;
-      
-      // If the filePath includes the full storage path, extract just the filename part
       if (filePath.includes('resumes/')) {
         const parts = filePath.split('resumes/');
         cleanFileName = parts[parts.length - 1];
@@ -69,14 +68,12 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
       });
 
       if (response.success && response.analysis) {
-        console.log('✅ Analysis response received:', response.analysis);
+        console.log('✅ Enhanced analysis response received:', response);
         
         let parsedAnalysis: ResumeAnalysisData;
         
-        // Check if the analysis is already parsed JSON or needs parsing
         if (typeof response.analysis === 'string') {
           try {
-            // Try to parse as JSON first
             const jsonAnalysis = JSON.parse(response.analysis);
             parsedAnalysis = {
               profileSummary: jsonAnalysis.profileSummary || 'Unable to generate profile summary from the resume content.',
@@ -86,45 +83,59 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
               experienceLevel: ['Junior', 'Mid', 'Senior'].includes(jsonAnalysis.experienceLevel) 
                 ? jsonAnalysis.experienceLevel 
                 : 'Mid',
-              careerFocus: jsonAnalysis.careerFocus || 'Technology and professional services',
+              careerFocus: jsonAnalysis.careerFocus || 'Professional services',
               suggestedJobs: Array.isArray(jsonAnalysis.suggestedJobs) && jsonAnalysis.suggestedJobs.length > 0
                 ? jsonAnalysis.suggestedJobs 
                 : []
             };
           } catch (parseError) {
-            console.warn('📄 Analysis is not JSON, treating as text:', parseError);
-            // If it's not JSON, it means the extraction failed and we got an error message
-            throw new Error('Failed to extract readable text from the resume. The PDF may be corrupted, image-based, or heavily formatted.');
+            console.warn('📄 Analysis is not JSON, treating as error');
+            throw new Error('Failed to extract readable text from the resume. Please try a different PDF file.');
           }
         } else {
-          // Analysis is already an object
           parsedAnalysis = response.analysis as ResumeAnalysisData;
         }
 
-        // Validate that we got meaningful analysis
+        // Enhanced validation - check for meaningful content
         if (!parsedAnalysis.profileSummary || 
             parsedAnalysis.profileSummary.includes('obfuscated') || 
-            parsedAnalysis.profileSummary.includes('encoded') ||
-            parsedAnalysis.profileSummary.includes('difficult to extract')) {
-          throw new Error('The resume text extraction failed. Please ensure your PDF contains readable text and try uploading again.');
+            parsedAnalysis.profileSummary.includes('corrupted') ||
+            parsedAnalysis.profileSummary.includes('difficult to extract') ||
+            parsedAnalysis.profileSummary.includes('heavily formatted')) {
+          throw new Error('The resume text extraction quality is too low for meaningful analysis. Please ensure your PDF contains readable text and try uploading again.');
         }
 
         setAnalysis(parsedAnalysis);
+        
+        // Store diagnostics if available
+        if (response.diagnostics) {
+          setDiagnostics(response.diagnostics);
+        }
+        
         onAnalysisComplete?.(parsedAnalysis);
 
         toast({
           title: "AI Resume Analysis Complete!",
-          description: `GPT-4o-mini analysis completed with ${parsedAnalysis.highlightedSkills.length} skills identified and ${parsedAnalysis.suggestedJobs.length} job suggestions.`,
+          description: `Enhanced GPT-4o-mini analysis completed with ${parsedAnalysis.highlightedSkills.length} skills identified and ${parsedAnalysis.suggestedJobs.length} job suggestions.`,
         });
 
       } else {
         const errorMsg = response.error || 'Failed to analyze resume';
         setError(errorMsg);
+        
+        // Enhanced error messages based on common issues
+        let userFriendlyMessage = errorMsg;
+        if (errorMsg.includes('text extraction')) {
+          userFriendlyMessage = "We couldn't extract readable text from your PDF. Please ensure it's not an image-based scan.";
+        } else if (errorMsg.includes('encrypted') || errorMsg.includes('password')) {
+          userFriendlyMessage = "Your PDF appears to be password-protected. Please upload an unprotected version.";
+        } else if (errorMsg.includes('corrupted') || errorMsg.includes('malformed')) {
+          userFriendlyMessage = "Your PDF file appears to be corrupted. Please try uploading a different file.";
+        }
+        
         toast({
           title: "Analysis Failed", 
-          description: errorMsg.includes('File not found') 
-            ? "We couldn't find your resume file. Please try uploading again."
-            : "We couldn't analyze your resume. The file may be corrupted or unreadable. Please try uploading a different PDF.",
+          description: userFriendlyMessage,
           variant: "destructive",
         });
       }
@@ -161,7 +172,7 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
         <CardContent>
           <Alert>
             <AlertDescription>
-              Upload a resume to get AI-powered analysis with GPT-4o-mini of your skills and experience.
+              Upload a resume to get AI-powered analysis with enhanced GPT-4o-mini processing of your skills and experience.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -174,23 +185,53 @@ const AIResumeAnalysis: React.FC<AIResumeAnalysisProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain size={20} />
-          AI Resume Analysis (GPT-4o-mini)
+          AI Resume Analysis (Enhanced GPT-4o-mini)
         </CardTitle>
       </CardHeader>
       <CardContent>
         {loading && (
           <div className="flex items-center justify-center p-8">
             <Loader2 size={24} className="animate-spin mr-2" />
-            <span>Analyzing your resume with GPT-4o-mini...</span>
+            <span>Analyzing your resume with enhanced GPT-4o-mini processing...</span>
           </div>
         )}
 
         {error && (
           <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               {error}
             </AlertDescription>
           </Alert>
+        )}
+
+        {/* Diagnostics Section */}
+        {diagnostics && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+              <FileText size={16} />
+              Processing Diagnostics
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+              {diagnostics.extraction_method && (
+                <div className="flex items-center gap-1">
+                  <CheckCircle size={12} className="text-green-500" />
+                  Method: {diagnostics.extraction_method}
+                </div>
+              )}
+              {diagnostics.pdfSize && (
+                <div>Size: {(diagnostics.pdfSize / 1024 / 1024).toFixed(2)}MB</div>
+              )}
+              {diagnostics.pdfVersion && (
+                <div>PDF Version: {diagnostics.pdfVersion}</div>
+              )}
+              {diagnostics.extractionAttempts && (
+                <div className="col-span-2">
+                  <span>Attempts: {diagnostics.extractionAttempts.join(', ')}</span>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {analysis && (
