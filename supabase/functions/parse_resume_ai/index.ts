@@ -35,10 +35,10 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Improved PDF text extraction function
+// Significantly improved PDF text extraction function
 async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
-    console.log('🔍 Starting advanced PDF text extraction...');
+    console.log('🔍 Starting comprehensive PDF text extraction...');
     
     const uint8Array = new Uint8Array(arrayBuffer);
     console.log('📄 PDF size:', uint8Array.length, 'bytes');
@@ -49,7 +49,8 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
     let extractedText = '';
     const textChunks: string[] = [];
     
-    // Method 1: Extract from stream objects with better text detection
+    // Method 1: Extract from stream objects with comprehensive text detection
+    console.log('🔍 Method 1: Extracting from stream objects...');
     const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
     const streams = [...pdfString.matchAll(streamRegex)];
     
@@ -58,39 +59,74 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
     for (const stream of streams) {
       const streamContent = stream[1];
       
-      // Look for text patterns in streams
-      const textPatterns = [
-        // Standard text operators
-        /\(((?:[^\\()]|\\[\\()])*?)\)\s*Tj/g,
-        /\[((?:[^\[\]])*?)\]\s*TJ/g,
-        // Text with positioning
-        /\(([^)]{2,})\)\s*[0-9\s]*Tj/g,
-        // Multi-line text
-        /BT\s+([\s\S]*?)\s+ET/g
-      ];
-      
-      for (const pattern of textPatterns) {
-        const matches = [...streamContent.matchAll(pattern)];
-        for (const match of matches) {
-          let text = match[1];
-          if (text && text.length > 1) {
-            // Clean the text
-            text = text
-              .replace(/\\n/g, ' ')
-              .replace(/\\r/g, ' ')
-              .replace(/\\t/g, ' ')
-              .replace(/\\(.)/g, '$1')
-              .trim();
-            
-            if (text.length > 1 && /[a-zA-Z]/.test(text)) {
-              textChunks.push(text);
+      // Decode FlateDecode compressed streams if possible
+      try {
+        // Look for text patterns in streams with various text operators
+        const textPatterns = [
+          // Standard text showing operators
+          /\(((?:[^\\()]|\\.)*?)\)\s*Tj/g,
+          /\(((?:[^\\()]|\\.)*?)\)\s*TJ/g,
+          // Array text showing
+          /\[((?:[^\[\]]|\[[^\]]*\])*?)\]\s*TJ/g,
+          // Text with positioning
+          /\(([^)]{2,})\)\s*[0-9\s\.\-]*\s*T[jd]/g,
+          // Multi-line text blocks
+          /BT\s+([\s\S]*?)\s+ET/g,
+          // Hex encoded text
+          /<([0-9a-fA-F\s]+)>\s*T[jd]/g
+        ];
+        
+        for (const pattern of textPatterns) {
+          const matches = [...streamContent.matchAll(pattern)];
+          for (const match of matches) {
+            let text = match[1];
+            if (text && text.length > 0) {
+              
+              // Handle hex-encoded text
+              if (pattern.source.includes('<')) {
+                text = text.replace(/\s/g, '');
+                let decoded = '';
+                for (let i = 0; i < text.length; i += 2) {
+                  const hex = text.substr(i, 2);
+                  if (hex.length === 2) {
+                    const charCode = parseInt(hex, 16);
+                    if (charCode >= 32 && charCode <= 126) {
+                      decoded += String.fromCharCode(charCode);
+                    } else if (charCode === 10 || charCode === 13) {
+                      decoded += ' ';
+                    }
+                  }
+                }
+                text = decoded;
+              } else {
+                // Handle array notation [(...) (...)]
+                if (text.includes('[') && text.includes(']')) {
+                  text = text.replace(/\[|\]/g, '');
+                }
+                
+                // Clean escape sequences and formatting
+                text = text
+                  .replace(/\\n/g, ' ')
+                  .replace(/\\r/g, ' ')
+                  .replace(/\\t/g, ' ')
+                  .replace(/\\([\\()])/g, '$1')
+                  .replace(/\\\\/g, '\\')
+                  .trim();
+              }
+              
+              if (text.length > 1 && /[a-zA-Z0-9]/.test(text)) {
+                textChunks.push(text);
+              }
             }
           }
         }
+      } catch (e) {
+        console.log('⚠️ Error processing stream:', e.message);
       }
     }
     
-    // Method 2: Direct text extraction from PDF structure
+    // Method 2: Extract from text objects with better parsing
+    console.log('🔍 Method 2: Extracting from text objects...');
     const textObjectRegex = /BT\s*([\s\S]*?)\s*ET/g;
     const textObjects = [...pdfString.matchAll(textObjectRegex)];
     
@@ -99,11 +135,13 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
     for (const textObj of textObjects) {
       const content = textObj[1];
       
-      // Extract text with better patterns
+      // Multiple patterns for text extraction
       const patterns = [
         /\(([^)]+)\)\s*Tj/g,
+        /\(([^)]+)\)\s*TJ/g,
         /\[(.*?)\]\s*TJ/g,
-        /<([0-9a-fA-F\s]+)>\s*Tj/g
+        /<([0-9a-fA-F\s]+)>\s*Tj/g,
+        /\/F\d+\s+\d+\s+Tf\s*\(([^)]+)\)/g
       ];
       
       for (const pattern of patterns) {
@@ -118,9 +156,11 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
             for (let i = 0; i < text.length; i += 2) {
               const hex = text.substr(i, 2);
               if (hex.length === 2) {
-                const char = String.fromCharCode(parseInt(hex, 16));
-                if (char.charCodeAt(0) >= 32 && char.charCodeAt(0) <= 126) {
-                  decoded += char;
+                const charCode = parseInt(hex, 16);
+                if (charCode >= 32 && charCode <= 126) {
+                  decoded += String.fromCharCode(charCode);
+                } else if (charCode === 10 || charCode === 13) {
+                  decoded += ' ';
                 }
               }
             }
@@ -133,67 +173,91 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
               .trim();
           }
           
-          if (text.length > 1 && /[a-zA-Z]/.test(text)) {
+          if (text.length > 1 && /[a-zA-Z0-9]/.test(text)) {
             textChunks.push(text);
           }
         }
       }
     }
     
-    // Method 3: Look for readable ASCII strings
-    if (textChunks.length === 0) {
-      console.log('🔄 Using ASCII string extraction...');
+    // Method 3: Advanced ASCII string extraction with better filtering
+    if (textChunks.length < 10) {
+      console.log('🔄 Method 3: Using enhanced ASCII string extraction...');
       
-      // Find sequences of readable characters
-      const asciiRegex = /[\x20-\x7E]{4,}/g;
+      // Find sequences of readable characters with word boundaries
+      const asciiRegex = /[a-zA-Z][a-zA-Z0-9\s\.,;:!?\-@()#%&+=/]{3,}/g;
       const asciiMatches = pdfString.match(asciiRegex) || [];
       
       for (const match of asciiMatches) {
         const cleaned = match.trim();
-        if (cleaned.length > 3 && 
+        // Filter out PDF structure elements
+        if (cleaned.length > 2 && 
             /[a-zA-Z]/.test(cleaned) && 
-            !cleaned.includes('obj') && 
-            !cleaned.includes('endobj') &&
-            !cleaned.includes('stream') &&
-            !cleaned.includes('xref')) {
+            !cleaned.match(/^(obj|endobj|stream|endstream|xref|trailer|startxref|%%EOF|%PDF)/) &&
+            !cleaned.match(/^(Type|Font|Length|Filter|Width|Height)$/) &&
+            !cleaned.includes('FlateDecode') &&
+            !cleaned.includes('DeviceRGB') &&
+            cleaned.length < 200) { // Avoid very long strings that might be encoded data
           textChunks.push(cleaned);
+        }
+      }
+    }
+    
+    // Method 4: Look for specific text patterns that indicate resume content
+    console.log('🔍 Method 4: Looking for resume-specific patterns...');
+    const resumePatterns = [
+      /(?:Name|Contact|Email|Phone|Address|Objective|Experience|Education|Skills|Languages)[\s:]+([^\n\r]{3,50})/gi,
+      /([A-Z][a-z]+\s+[A-Z][a-z]+)/g, // Names
+      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, // Email
+      /(\+?\d{1,4}[\s\-]?\(?\d{1,4}\)?[\s\-]?\d{1,4}[\s\-]?\d{1,9})/g, // Phone
+      /(Bachelor|Master|PhD|Degree|University|College|School)[\s\w]*/gi,
+      /(Manager|Engineer|Analyst|Developer|Specialist|Assistant|Director|Coordinator)[\s\w]*/gi
+    ];
+    
+    for (const pattern of resumePatterns) {
+      const matches = [...pdfString.matchAll(pattern)];
+      for (const match of matches) {
+        const text = match[1] || match[0];
+        if (text && text.length > 2 && /[a-zA-Z]/.test(text)) {
+          textChunks.push(text.trim());
         }
       }
     }
     
     // Combine and clean all extracted text
     extractedText = textChunks
+      .filter(chunk => chunk && chunk.length > 1)
       .join(' ')
       .replace(/\s+/g, ' ')
       .replace(/(.)\1{4,}/g, '$1') // Remove excessive repeated characters
+      .replace(/[^\w\s\.,;:!?\-@()#%&+=/]/g, ' ') // Clean special characters
       .trim();
     
     console.log('✅ PDF text extraction completed');
     console.log('📊 Extracted text length:', extractedText.length);
     console.log('📄 Text chunks found:', textChunks.length);
     
-    if (extractedText.length > 50) {
-      console.log('📄 Text preview:', extractedText.substring(0, 300) + '...');
+    if (extractedText.length > 30) {
+      console.log('📄 Text preview:', extractedText.substring(0, 500) + '...');
       return extractedText;
     } else {
-      // Fallback: If extraction failed, try a simpler approach
-      console.log('⚠️ Primary extraction failed, trying fallback...');
+      // Final fallback: Extract any readable sequences
+      console.log('⚠️ Minimal extraction, trying final fallback...');
       
-      // Simple fallback extraction
       const fallbackText = pdfString
-        .replace(/[^\x20-\x7E]/g, ' ')
+        .replace(/[^\x20-\x7E\n\r]/g, ' ')
         .replace(/\s+/g, ' ')
         .split(' ')
         .filter(word => word.length > 2 && /[a-zA-Z]/.test(word))
         .join(' ')
         .trim();
       
-      if (fallbackText.length > 50) {
+      if (fallbackText.length > 30) {
         console.log('✅ Fallback extraction successful:', fallbackText.length, 'characters');
         return fallbackText;
       }
       
-      throw new Error('Could not extract readable text from PDF. The file may be image-based or encrypted.');
+      throw new Error('Could not extract sufficient readable text from PDF. The file may be image-based, heavily formatted, or encrypted.');
     }
     
   } catch (error) {
@@ -212,7 +276,7 @@ async function analyzeResumeWithGPT4oMini(resumeText: string, fileName: string):
   console.log('📄 Resume text preview:', resumeText.substring(0, 500) + '...');
   
   // Validate that we have meaningful text
-  if (resumeText.length < 50) {
+  if (resumeText.length < 30) {
     throw new Error('Insufficient text extracted from resume for analysis');
   }
   
@@ -439,7 +503,7 @@ serve(async (req) => {
     console.log('📝 Final extracted text length:', extractedText.length);
     console.log('📄 Extracted text quality check - readable characters:', /[a-zA-Z]/.test(extractedText));
 
-    if (!extractedText || extractedText.length < 50) {
+    if (!extractedText || extractedText.length < 30) {
       return new Response(
         JSON.stringify({ 
           success: false,
