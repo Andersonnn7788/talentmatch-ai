@@ -35,6 +35,41 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Utility function for exponential backoff with jitter
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Check if it's a rate limit error
+      const isRateLimit = error instanceof Error && 
+        (error.message.includes('rate_limit') || error.message.includes('429'));
+      
+      if (isRateLimit || attempt < maxRetries) {
+        // Exponential backoff with jitter
+        const delayMs = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+        console.log(`⏳ Attempt ${attempt + 1} failed, retrying in ${delayMs}ms...`);
+        await delay(delayMs);
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
 // Comprehensive PDF text extraction with multiple fallback methods
 async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
@@ -249,6 +284,72 @@ async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   }
 }
 
+// Clean and validate text before sending to OpenAI
+function cleanAndValidateText(text: string): string {
+  if (!text || typeof text !== 'string') {
+    throw new Error('Invalid text input');
+  }
+  
+  // Remove or replace problematic characters
+  let cleanedText = text
+    // Remove control characters except newlines, tabs, and carriage returns
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
+    // Replace multiple whitespace with single space
+    .replace(/\s+/g, ' ')
+    // Remove excessively repeated characters (more than 4 in a row)
+    .replace(/(.)\1{4,}/g, '$1$1$1')
+    // Normalize quotes and dashes
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/[–—]/g, '-')
+    // Remove any remaining non-printable characters
+    .replace(/[^\x20-\x7E\n\r\t]/g, '')
+    .trim();
+  
+  // Validate minimum length
+  if (cleanedText.length < 50) {
+    throw new Error('Text too short for meaningful analysis');
+  }
+  
+  // Validate it contains readable content
+  const wordCount = cleanedText.split(/\s+/).length;
+  const letterCount = (cleanedText.match(/[a-zA-Z]/g) || []).length;
+  const letterRatio = letterCount / cleanedText.length;
+  
+  if (wordCount < 10 || letterRatio < 0.4) {
+    throw new Error('Text does not contain sufficient readable content');
+  }
+  
+  console.log('✅ Text validation passed - Words:', wordCount, 'Letter ratio:', letterRatio.toFixed(2));
+  return cleanedText;
+}
+
+// Chunk text if it's too large for the API
+function chunkText(text: string, maxChunkSize: number = 12000): string[] {
+  if (text.length <= maxChunkSize) {
+    return [text];
+  }
+  
+  const chunks: string[] = [];
+  const sentences = text.split(/[.!?]+\s+/);
+  let currentChunk = '';
+  
+  for (const sentence of sentences) {
+    if ((currentChunk + sentence).length > maxChunkSize && currentChunk) {
+      chunks.push(currentChunk.trim());
+      currentChunk = sentence;
+    } else {
+      currentChunk += (currentChunk ? '. ' : '') + sentence;
+    }
+  }
+  
+  if (currentChunk) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  return chunks;
+}
+
 async function analyzeResumeWithGPT4oMini(resumeText: string, fileName: string): Promise<ResumeAnalysisResult> {
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
@@ -256,155 +357,191 @@ async function analyzeResumeWithGPT4oMini(resumeText: string, fileName: string):
 
   console.log('🤖 Starting GPT-4o-mini analysis for resume:', fileName);
   console.log('📊 Resume text length:', resumeText.length);
-  console.log('📄 Resume text preview:', resumeText.substring(0, 300) + '...');
   
-  // Validate that we have meaningful text
-  if (resumeText.length < 100) {
-    throw new Error('Insufficient text extracted from resume for meaningful analysis');
-  }
+  // Clean and validate the text
+  const cleanedText = cleanAndValidateText(resumeText);
+  console.log('📊 Cleaned text length:', cleanedText.length);
   
-  // Check for corrupted or meaningless text
-  const wordCount = resumeText.split(/\s+/).length;
-  const letterCount = (resumeText.match(/[a-zA-Z]/g) || []).length;
-  const letterRatio = letterCount / resumeText.length;
+  // Chunk text if necessary
+  const textChunks = chunkText(cleanedText, 12000);
+  console.log('📊 Text chunks:', textChunks.length);
   
-  if (wordCount < 20 || letterRatio < 0.3) {
-    throw new Error('Extracted text appears corrupted or contains insufficient meaningful content');
-  }
+  // Use the first chunk or combine if small enough
+  const textForAnalysis = textChunks.length === 1 ? textChunks[0] : 
+    textChunks.slice(0, 2).join(' ').substring(0, 12000);
   
-  // Clean and prepare the text for analysis
-  const cleanedText = resumeText
-    .replace(/\s+/g, ' ')
-    .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters that might be artifacts
-    .trim();
-  
-  // Limit text length for API constraints
-  const words = cleanedText.split(/\s+/);
-  const maxWords = 3000;
-  const trimmedText = words.slice(0, maxWords).join(' ');
-  
-  console.log('📊 Sending text to GPT-4o-mini - Words:', trimmedText.split(/\s+/).length);
+  console.log('📊 Text for analysis length:', textForAnalysis.length);
+  console.log('📄 Preview:', textForAnalysis.substring(0, 200) + '...');
 
-  const prompt = `You are an expert AI Career Advisor. Analyze this resume and provide a comprehensive assessment.
+  const prompt = `You are an expert AI Career Advisor and Resume Analyst. Analyze this resume content thoroughly and provide a comprehensive assessment.
 
 RESUME CONTENT:
-"${trimmedText}"
+"${textForAnalysis}"
 
-Please analyze this resume thoroughly and provide your assessment in EXACTLY this JSON format:
+ANALYSIS REQUIREMENTS:
+1. Provide a detailed 2-3 sentence professional summary based ONLY on the actual resume content
+2. Extract 6-8 specific technical and soft skills that are actually mentioned or clearly demonstrated in the resume
+3. Determine experience level (Junior/Mid/Senior) based on years of experience, job titles, and responsibilities shown
+4. Identify the primary career focus/industry from the actual work history and skills
+5. Suggest 3-4 highly relevant job positions that match the candidate's actual experience and skills
+
+CRITICAL INSTRUCTIONS:
+- Base ALL analysis ONLY on the actual resume content provided
+- Extract real skills and technologies mentioned in the resume
+- Make realistic job suggestions based on actual experience level
+- Ensure experience level matches the career progression shown
+- Provide specific reasons for job suggestions based on candidate's background
+
+Return your analysis in this EXACT JSON format (no additional text):
 
 {
-  "profileSummary": "A detailed 2-3 sentence professional summary based on the actual resume content",
+  "profileSummary": "A detailed professional summary based on actual resume content and experience",
   "highlightedSkills": ["skill1", "skill2", "skill3", "skill4", "skill5", "skill6", "skill7", "skill8"],
   "experienceLevel": "Junior|Mid|Senior",
-  "careerFocus": "Primary career focus/industry based on actual resume content",
+  "careerFocus": "Primary career focus based on actual resume content",
   "suggestedJobs": [
     {
       "title": "Job Title 1",
-      "reason": "Specific reason why this job matches based on the candidate's actual experience and skills",
-      "keySkills": ["required skill 1", "required skill 2", "required skill 3"]
+      "reason": "Specific reason based on candidate's actual experience and skills",
+      "keySkills": ["skill1", "skill2", "skill3"]
     },
     {
       "title": "Job Title 2", 
-      "reason": "Specific reason why this job matches based on the candidate's actual experience and skills",
-      "keySkills": ["required skill 1", "required skill 2", "required skill 3"]
+      "reason": "Specific reason based on candidate's actual experience and skills",
+      "keySkills": ["skill1", "skill2", "skill3"]
     },
     {
       "title": "Job Title 3",
-      "reason": "Specific reason why this job matches based on the candidate's actual experience and skills", 
-      "keySkills": ["required skill 1", "required skill 2", "required skill 3"]
+      "reason": "Specific reason based on candidate's actual experience and skills", 
+      "keySkills": ["skill1", "skill2", "skill3"]
     }
   ]
-}
+}`;
 
-CRITICAL REQUIREMENTS:
-1. Base ALL analysis ONLY on the actual resume content provided above
-2. Extract 6-8 specific skills that are actually mentioned in the resume
-3. Suggest 3-4 highly relevant job positions that match the candidate's actual background
-4. Determine experience level based on actual years mentioned, job titles, or responsibilities described
-5. Identify the primary career focus/industry from the actual resume content
-6. Return ONLY valid JSON - no additional text, explanations, or formatting
-7. If the resume content seems unclear, make your best professional assessment based on available information
-8. Ensure all suggested jobs are realistic and match the candidate's actual experience level and skills`;
-
-  try {
+  const makeOpenAIRequest = async (): Promise<ResumeAnalysisResult> => {
     console.log('📡 Making request to OpenAI GPT-4o-mini...');
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert resume analyst and career advisor. Analyze resumes accurately and provide structured JSON responses based only on the actual content provided. Always return valid JSON format.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenAI API error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    const analysisText = data.choices[0].message.content;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
     
-    console.log('✅ GPT-4o-mini analysis completed');
-    console.log('📝 Raw analysis response:', analysisText);
-    
-    // Parse the JSON response
-    let parsedAnalysis;
     try {
-      parsedAnalysis = JSON.parse(analysisText);
-    } catch (parseError) {
-      console.error('❌ JSON parsing error:', parseError);
-      throw new Error('Failed to parse AI analysis response as valid JSON');
-    }
-    
-    // Validate and ensure we have good data
-    if (!parsedAnalysis.profileSummary || 
-        !Array.isArray(parsedAnalysis.highlightedSkills) ||
-        parsedAnalysis.highlightedSkills.length === 0) {
-      throw new Error('AI analysis returned incomplete or invalid data');
-    }
-    
-    // Structure the response with proper validation
-    const result: ResumeAnalysisResult = {
-      profileSummary: parsedAnalysis.profileSummary,
-      highlightedSkills: Array.isArray(parsedAnalysis.highlightedSkills) ? 
-        parsedAnalysis.highlightedSkills.slice(0, 8) : 
-        ['Communication', 'Problem Solving', 'Technical Skills', 'Project Management'],
-      experienceLevel: ['Junior', 'Mid', 'Senior'].includes(parsedAnalysis.experienceLevel) ? 
-        parsedAnalysis.experienceLevel : 'Mid',
-      careerFocus: parsedAnalysis.careerFocus || 'Professional services',
-      suggestedJobs: Array.isArray(parsedAnalysis.suggestedJobs) ? 
-        parsedAnalysis.suggestedJobs.slice(0, 4).map(job => ({
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are an expert resume analyst and career advisor. Analyze resumes accurately and provide structured JSON responses based only on the actual content provided. Always return valid JSON format without any additional text or formatting.' 
+            },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 3000, // Increased for more detailed responses
+          response_format: { type: "json_object" }
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ OpenAI API error:', response.status, response.statusText, errorText);
+        
+        if (response.status === 429) {
+          throw new Error('Rate limit exceeded - will retry');
+        } else if (response.status === 401) {
+          throw new Error('Invalid OpenAI API key');
+        } else if (response.status === 400) {
+          throw new Error('Invalid request to OpenAI API');
+        } else {
+          throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+        }
+      }
+
+      const data = await response.json();
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response structure from OpenAI API');
+      }
+      
+      const analysisText = data.choices[0].message.content;
+      
+      console.log('✅ GPT-4o-mini response received');
+      console.log('📝 Raw analysis response length:', analysisText.length);
+      console.log('📄 Response preview:', analysisText.substring(0, 300) + '...');
+      
+      // Parse and validate the JSON response
+      let parsedAnalysis;
+      try {
+        parsedAnalysis = JSON.parse(analysisText);
+      } catch (parseError) {
+        console.error('❌ JSON parsing error:', parseError);
+        console.error('📄 Raw response:', analysisText);
+        throw new Error('Failed to parse AI analysis response as valid JSON');
+      }
+      
+      // Validate required fields
+      if (!parsedAnalysis.profileSummary || 
+          !Array.isArray(parsedAnalysis.highlightedSkills) ||
+          !parsedAnalysis.experienceLevel ||
+          !parsedAnalysis.careerFocus) {
+        console.error('❌ Incomplete analysis:', parsedAnalysis);
+        throw new Error('AI analysis returned incomplete data - missing required fields');
+      }
+      
+      // Validate experience level
+      if (!['Junior', 'Mid', 'Senior'].includes(parsedAnalysis.experienceLevel)) {
+        console.warn('⚠️ Invalid experience level, defaulting to Mid');
+        parsedAnalysis.experienceLevel = 'Mid';
+      }
+      
+      // Ensure we have skills
+      if (parsedAnalysis.highlightedSkills.length === 0) {
+        console.warn('⚠️ No skills found, adding defaults');
+        parsedAnalysis.highlightedSkills = ['Communication', 'Problem Solving', 'Teamwork', 'Adaptability'];
+      }
+      
+      // Ensure we have job suggestions
+      if (!Array.isArray(parsedAnalysis.suggestedJobs)) {
+        parsedAnalysis.suggestedJobs = [];
+      }
+      
+      // Structure the final response
+      const result: ResumeAnalysisResult = {
+        profileSummary: parsedAnalysis.profileSummary,
+        highlightedSkills: parsedAnalysis.highlightedSkills.slice(0, 8),
+        experienceLevel: parsedAnalysis.experienceLevel,
+        careerFocus: parsedAnalysis.careerFocus,
+        suggestedJobs: parsedAnalysis.suggestedJobs.slice(0, 4).map(job => ({
           title: job.title || 'Professional Role',
           reason: job.reason || 'Based on skills and experience demonstrated in resume',
           keySkills: Array.isArray(job.keySkills) ? job.keySkills.slice(0, 5) : ['Communication', 'Analysis', 'Problem Solving']
-        })) : [],
-      extractedText: trimmedText
-    };
-    
-    console.log('✅ Structured analysis completed successfully');
-    console.log('📊 Final result - Skills:', result.highlightedSkills.length, 'Jobs:', result.suggestedJobs.length);
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ GPT-4o-mini analysis error:', error);
-    throw new Error(`Failed to analyze resume with GPT-4o-mini: ${error.message}`);
-  }
+        })),
+        extractedText: textForAnalysis
+      };
+      
+      console.log('✅ Analysis validation completed successfully');
+      console.log('📊 Final result - Skills:', result.highlightedSkills.length, 'Jobs:', result.suggestedJobs.length);
+      
+      return result;
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('OpenAI API request timed out');
+      }
+      throw error;
+    }
+  };
+
+  // Use retry logic for the OpenAI request
+  return await retryWithBackoff(makeOpenAIRequest, 3, 2000);
 }
 
 serve(async (req) => {
@@ -446,25 +583,21 @@ serve(async (req) => {
 
     console.log(`📁 Using file path: ${cleanFilePath}`);
 
-    // Download file from Supabase Storage
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('documents')
-      .download(cleanFilePath);
+    // Download file from Supabase Storage with retry logic
+    const downloadFile = async () => {
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('documents')
+        .download(cleanFilePath);
 
-    if (downloadError) {
-      console.error('❌ File download error:', downloadError);
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: `Failed to download file: ${downloadError.message}. File path: ${cleanFilePath}` 
-        }),
-        { 
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
+      if (downloadError) {
+        console.error('❌ File download error:', downloadError);
+        throw new Error(`Failed to download file: ${downloadError.message}. File path: ${cleanFilePath}`);
+      }
 
+      return fileData;
+    };
+
+    const fileData = await retryWithBackoff(downloadFile, 2, 1000);
     console.log('✅ File downloaded successfully, size:', fileData.size);
 
     // Convert file to ArrayBuffer
@@ -514,30 +647,26 @@ serve(async (req) => {
     // Save to database with structured analysis
     const analysisForStorage = JSON.stringify(analysisResult, null, 2);
     
-    const { data: insertData, error: insertError } = await supabase
-      .from('resume_analysis')
-      .insert({
-        user_id,
-        file_name: cleanFilePath,
-        analysis: analysisForStorage,
-      })
-      .select()
-      .single();
+    const saveToDatabase = async () => {
+      const { data: insertData, error: insertError } = await supabase
+        .from('resume_analysis')
+        .insert({
+          user_id,
+          file_name: cleanFilePath,
+          analysis: analysisForStorage,
+        })
+        .select()
+        .single();
 
-    if (insertError) {
-      console.error('❌ Database insert error:', insertError);
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: `Failed to save analysis: ${insertError.message}` 
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
+      if (insertError) {
+        console.error('❌ Database insert error:', insertError);
+        throw new Error(`Failed to save analysis: ${insertError.message}`);
+      }
 
+      return insertData;
+    };
+
+    const insertData = await retryWithBackoff(saveToDatabase, 2, 1000);
     console.log('✅ Analysis saved to database with ID:', insertData.id);
 
     return new Response(
@@ -555,13 +684,34 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Resume analysis error:', error);
     
+    // Determine appropriate status code based on error type
+    let statusCode = 500;
+    let errorMessage = 'Failed to analyze resume';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      if (error.message.includes('API key')) {
+        statusCode = 401;
+      } else if (error.message.includes('rate_limit') || error.message.includes('429')) {
+        statusCode = 429;
+      } else if (error.message.includes('timeout')) {
+        statusCode = 408;
+      } else if (error.message.includes('File not found') || error.message.includes('download')) {
+        statusCode = 404;
+      } else if (error.message.includes('Invalid') || error.message.includes('required')) {
+        statusCode = 400;
+      }
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message || 'Failed to analyze resume'
+        error: errorMessage,
+        timestamp: new Date().toISOString()
       }),
       {
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
