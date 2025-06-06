@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -55,30 +56,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);  const signOut = async () => {
+  }, []);
+
+  const signOut = async () => {
     try {
       console.log('🚪 AuthContext: Starting sign out...');
       setLoading(true);
       
+      // Clear local state first
+      setUser(null);
+      setSession(null);
+      
+      // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('❌ AuthContext: Sign out error:', error);
-        throw error;
+        // Don't throw error, as local state is already cleared
       }
       
-      // Manually clear state
-      setUser(null);
-      setSession(null);
-      
-      console.log('✅ AuthContext: Sign out successful');
+      console.log('✅ AuthContext: Sign out completed');
       
     } catch (error) {
       console.error('❌ AuthContext: Sign out failed:', error);
-      // Even if there's an error, clear local state
-      setUser(null);
-      setSession(null);
-      throw error;
+      // Don't re-throw error to prevent UI issues
     } finally {
       setLoading(false);
     }

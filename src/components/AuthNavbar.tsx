@@ -5,9 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, Settings } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AuthNavbarProps {
   userType: 'employee' | 'recruiter';
@@ -17,27 +16,20 @@ const AuthNavbar = ({ userType }: AuthNavbarProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const handleSignOut = async () => {
     try {
       console.log('🚪 Starting sign out process...');
       
-      // Show loading state
       toast({
         title: "Signing out...",
         description: "Please wait while we sign you out.",
       });
 
-      const { error } = await supabase.auth.signOut();
+      // Use only the AuthContext signOut method
+      await signOut();
       
-      if (error) {
-        console.error('❌ Sign out error:', error);
-        throw error;
-      }
-
       console.log('✅ Sign out successful');
-      
-      // Clear any local storage if needed
-      localStorage.removeItem('supabase.auth.token');
       
       toast({
         title: "Signed out successfully",
@@ -47,20 +39,15 @@ const AuthNavbar = ({ userType }: AuthNavbarProps) => {
       // Navigate to auth page
       navigate('/auth');
       
-      // Optionally reload the page to ensure clean state
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 1000);
-      
     } catch (error: any) {
       console.error('❌ Error during sign out:', error);
+      
+      // Even on error, try to navigate to auth page
       toast({
-        title: "Error signing out",
-        description: error.message || "There was a problem signing you out.",
-        variant: "destructive",
+        title: "Signed out",
+        description: "You have been logged out.",
       });
       
-      // Force navigation even on error
       navigate('/auth');
     }
   };
