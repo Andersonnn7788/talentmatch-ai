@@ -9,7 +9,18 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, userType }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  // Add error boundary for auth context
+  let user, loading;
+  
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+    loading = authContext.loading;
+  } catch (error) {
+    console.error('❌ ProtectedRoute: Auth context not available:', error);
+    // If auth context is not available, redirect to auth page
+    return <Navigate to="/auth" replace />;
+  }
 
   if (loading) {
     return (

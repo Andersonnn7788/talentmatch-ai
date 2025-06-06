@@ -63,9 +63,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('🚪 AuthContext: Starting sign out...');
       setLoading(true);
       
-      // Clear local state first
+      // Clear local state first to prevent any redirects
       setUser(null);
       setSession(null);
+      
+      // Clear any stored session data
+      localStorage.removeItem('sb-rezbwjeatqupurpkodlu-auth-token');
+      sessionStorage.removeItem('sb-rezbwjeatqupurpkodlu-auth-token');
       
       // Attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();

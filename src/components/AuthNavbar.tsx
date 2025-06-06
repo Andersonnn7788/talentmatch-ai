@@ -36,8 +36,8 @@ const AuthNavbar = ({ userType }: AuthNavbarProps) => {
         description: "You have been logged out of your account.",
       });
       
-      // Navigate to auth page
-      navigate('/auth');
+      // Navigate to auth page immediately after sign out
+      navigate('/auth', { replace: true });
       
     } catch (error: any) {
       console.error('❌ Error during sign out:', error);
@@ -48,7 +48,7 @@ const AuthNavbar = ({ userType }: AuthNavbarProps) => {
         description: "You have been logged out.",
       });
       
-      navigate('/auth');
+      navigate('/auth', { replace: true });
     }
   };
 
