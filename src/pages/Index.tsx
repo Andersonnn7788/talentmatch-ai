@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from 'react-router-dom';
@@ -9,15 +9,32 @@ import { Users, Briefcase, Target, Zap } from 'lucide-react';
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    // Only redirect if we have a user and haven't already navigated
+    if (!loading && user && !hasNavigated.current) {
       const userType = user.user_metadata?.user_type || 'employee';
+      hasNavigated.current = true;
       navigate(`/${userType}/home`);
+    }
+    
+    // Reset navigation flag when user becomes null (signed out)
+    if (!user) {
+      hasNavigated.current = false;
     }
   }, [user, loading, navigate]);
 
   if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // If user is authenticated but we haven't navigated yet, show loading
+  if (user && !hasNavigated.current) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
