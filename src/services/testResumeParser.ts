@@ -11,6 +11,21 @@ export interface TestParseResumeResponse {
   analysis_id?: string;
   analysis?: string;
   extracted_text_length?: number;
+  extraction_method?: string;
+  diagnostics?: {
+    pdfSize?: number;
+    pdfVersion?: string;
+    hasText?: boolean;
+    hasImages?: boolean;
+    isEncrypted?: boolean;
+    extractionAttempts?: string[];
+    fileSize?: number;
+    hasTextObjects?: boolean;
+    hasValidStructure?: boolean;
+    successfulMethod?: string;
+    textLength?: number;
+    wordCount?: number;
+  };
   error?: string;
 }
 
