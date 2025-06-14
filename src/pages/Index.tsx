@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,14 +49,10 @@ const Index = () => {
           <nav className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <img 
-                src="/lovable-uploads/ead5aa05-428c-4c27-9ecc-e16084d736ba.png" 
+                src="/lovable-uploads/3c685baf-1e73-4882-b8e4-97cc329d1c66.png" 
                 alt="TalentMatch.AI Logo" 
-                className="h-10 w-auto"
+                className="h-12 w-auto"
               />
-              <div>
-                <span className="text-2xl font-bold text-gray-900">TalentMatch</span>
-                <span className="text-2xl font-bold text-blue-600">.AI</span>
-              </div>
             </div>
             
             <div className="hidden md:flex items-center space-x-8">
@@ -424,7 +419,7 @@ const Index = () => {
             <div>
               <div className="flex items-center space-x-3 mb-4">
                 <img 
-                  src="/lovable-uploads/ead5aa05-428c-4c27-9ecc-e16084d736ba.png" 
+                  src="/lovable-uploads/3c685baf-1e73-4882-b8e4-97cc329d1c66.png" 
                   alt="TM.AI Logo" 
                   className="h-8 w-auto"
                 />
