@@ -49,8 +49,8 @@ const Index = () => {
           <nav className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <img 
-                src="/lovable-uploads/3c685baf-1e73-4882-b8e4-97cc329d1c66.png" 
-                alt="TalentMatch.AI Logo" 
+                src="/lovable-uploads/d05cc45a-3134-49fc-9dd2-6aedf61c151a.png" 
+                alt="TM.AI Logo" 
                 className="h-12 w-auto"
               />
             </div>
@@ -419,7 +419,7 @@ const Index = () => {
             <div>
               <div className="flex items-center space-x-3 mb-4">
                 <img 
-                  src="/lovable-uploads/3c685baf-1e73-4882-b8e4-97cc329d1c66.png" 
+                  src="/lovable-uploads/d05cc45a-3134-49fc-9dd2-6aedf61c151a.png" 
                   alt="TM.AI Logo" 
                   className="h-8 w-auto"
                 />
