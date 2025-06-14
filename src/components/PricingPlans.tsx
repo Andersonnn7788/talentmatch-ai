@@ -9,6 +9,7 @@ const PricingPlans = () => {
     {
       name: "Free",
       price: 0,
+      currency: "MYR",
       description: "Explore how AI can help you with job matching",
       current: true,
       features: [
@@ -21,37 +22,23 @@ const PricingPlans = () => {
       ]
     },
     {
-      name: "Plus",
-      price: 20,
-      description: "Level up your job search with expanded AI features",
+      name: "Pro",
+      price: 50,
+      currency: "MYR",
+      description: "Get premium features including AI interviewer access",
       popular: true,
       features: [
         "Everything in Free",
-        "Advanced AI job matching with 95%+ accuracy",
+        "Unlimited AI job matching",
+        "Advanced resume analysis with improvement suggestions",
         "Unlimited job matches and applications",
-        "Enhanced resume analysis with improvement suggestions",
-        "Priority interview scheduling",
-        "AI-powered interview preparation",
+        "AI Interviewer - Practice with intelligent AI",
+        "Real-time interview feedback and coaching",
+        "Personalized interview preparation",
         "Salary negotiation insights",
         "Career path recommendations",
-        "Email support"
-      ]
-    },
-    {
-      name: "Pro",
-      price: 200,
-      description: "Get the best job matching experience with premium features",
-      features: [
-        "Everything in Plus",
-        "Premium AI matching with real-time job alerts",
-        "Unlimited access to all premium job listings",
-        "Personal career coach AI assistant",
-        "Advanced analytics and career insights",
-        "Direct recruiter connections",
-        "Executive-level job opportunities",
-        "Custom interview coaching sessions",
         "Priority customer support",
-        "Professional resume writing service"
+        "Direct recruiter connections"
       ]
     }
   ];
@@ -68,7 +55,7 @@ const PricingPlans = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (
             <Card 
               key={plan.name} 
@@ -94,10 +81,10 @@ const PricingPlans = () => {
                 </CardTitle>
                 <div className="mt-4">
                   <span className="text-5xl font-bold text-slate-900">
-                    ${plan.price}
+                    {plan.currency}{plan.price}
                   </span>
                   <span className="text-slate-500 ml-2">
-                    USD/month
+                    /month
                   </span>
                 </div>
                 <CardDescription className="mt-4 text-base">
@@ -146,14 +133,6 @@ const PricingPlans = () => {
                       <button className="text-blue-600 hover:underline">
                         Contact support
                       </button>
-                    </p>
-                  </div>
-                )}
-
-                {plan.name === "Plus" && (
-                  <div className="mt-8 pt-6 border-t border-gray-200">
-                    <p className="text-sm text-gray-500">
-                      Limits apply based on usage patterns
                     </p>
                   </div>
                 )}
