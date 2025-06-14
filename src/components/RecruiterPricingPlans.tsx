@@ -3,173 +3,125 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Star, Crown, Zap } from 'lucide-react';
+import { Check, Zap, Star, Crown } from 'lucide-react';
 
 const RecruiterPricingPlans = () => {
   const plans = [
     {
       name: "Basic",
-      monthlyPrice: "RM 1,500",
+      monthlyPrice: "1,500",
       successFee: "20%",
       description: "Perfect for small recruitment agencies getting started with AI",
       icon: <Zap className="h-6 w-6" />,
-      color: "border-blue-200 bg-blue-50",
-      buttonColor: "bg-blue-600 hover:bg-blue-700",
+      color: "border-gray-200 bg-white",
+      buttonColor: "bg-gray-600 hover:bg-gray-700",
       popular: false,
-      features: {
-        "AI Candidate Matching": "Basic algorithm",
-        "Monthly Job Slots": "50 active jobs",
-        "CRM Seats": "3 users",
-        "Predictive Analytics": <X className="h-4 w-4 text-red-500" />,
-        "Advanced Reporting": <X className="h-4 w-4 text-red-500" />,
-        "Bias Filters": <X className="h-4 w-4 text-red-500" />,
-        "API Integrations": "1 integration",
-        "Support Level": "Email support",
-        "SLA": "48-hour response",
-        "AI Credits": "5,000 credits/month",
-        "Analytics Dashboard": "Basic metrics"
-      }
+      features: [
+        "Basic AI candidate matching",
+        "50 active job slots",
+        "3 CRM user seats",
+        "Email support",
+        "5,000 AI credits/month",
+        "Basic analytics dashboard"
+      ]
     },
     {
       name: "Pro",
-      monthlyPrice: "RM 4,500",
+      monthlyPrice: "3,000",
       successFee: "18%",
       description: "Advanced AI tools for growing recruitment teams",
       icon: <Star className="h-6 w-6" />,
-      color: "border-green-200 bg-green-50",
+      color: "border-green-500 bg-white",
       buttonColor: "bg-green-600 hover:bg-green-700",
       popular: true,
-      savingsNote: "Save 25% vs Basic + success fees on multiple hires",
-      features: {
-        "AI Candidate Matching": "Advanced ML algorithm",
-        "Monthly Job Slots": "200 active jobs",
-        "CRM Seats": "10 users",
-        "Predictive Analytics": <Check className="h-4 w-4 text-green-500" />,
-        "Advanced Reporting": "Custom reports",
-        "Bias Filters": <Check className="h-4 w-4 text-green-500" />,
-        "API Integrations": "5 integrations",
-        "Support Level": "Priority phone & email",
-        "SLA": "24-hour response",
-        "AI Credits": "20,000 credits/month",
-        "Analytics Dashboard": "Advanced insights"
-      }
+      features: [
+        "Everything in Basic",
+        "Advanced ML algorithm matching",
+        "200 active job slots",
+        "10 CRM user seats",
+        "Predictive analytics",
+        "Advanced reporting & bias filters",
+        "Priority phone & email support",
+        "20,000 AI credits/month"
+      ]
     },
     {
       name: "Premium",
-      monthlyPrice: "RM 9,000",
-      annualPrice: "RM 8,000/month",
+      monthlyPrice: "5,000",
       successFee: "15%",
-      annualSuccessFee: "14%",
       description: "Enterprise-grade AI recruitment platform",
       icon: <Crown className="h-6 w-6" />,
-      color: "border-purple-200 bg-purple-50",
+      color: "border-purple-200 bg-white",
       buttonColor: "bg-purple-600 hover:bg-purple-700",
       popular: false,
-      enterpriseNote: "Annual plan: RM 8,000/month + 14% success fee",
-      features: {
-        "AI Candidate Matching": "Proprietary neural network",
-        "Monthly Job Slots": "Unlimited",
-        "CRM Seats": "Unlimited users",
-        "Predictive Analytics": "Full suite with forecasting",
-        "Advanced Reporting": "White-label reports",
-        "Bias Filters": "Advanced multi-layer filters",
-        "API Integrations": "Unlimited + custom",
-        "Support Level": "Dedicated account manager",
-        "SLA": "4-hour response",
-        "AI Credits": "100,000 credits/month",
-        "Analytics Dashboard": "Custom enterprise analytics"
-      }
+      features: [
+        "Everything in Pro",
+        "Proprietary neural network matching",
+        "Unlimited job slots & users",
+        "White-label custom reports",
+        "Advanced multi-layer bias filters",
+        "Dedicated account manager",
+        "100,000 AI credits/month",
+        "Custom enterprise analytics"
+      ]
     }
   ];
 
-  const renderFeature = (feature: any) => {
-    if (typeof feature === 'string') {
-      return <span className="text-sm text-gray-700">{feature}</span>;
-    }
-    return feature;
-  };
-
   return (
-    <div className="py-16 px-4 max-w-7xl mx-auto">
+    <div className="py-16 px-4 max-w-6xl mx-auto">
       {/* Header */}
       <div className="text-center mb-12">
         <h2 className="text-4xl font-bold text-gray-900 mb-4">
-          AI-Powered Recruitment Pricing
+          Upgrade Your Recruitment Process
         </h2>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-6">
-          Hybrid subscription model combining stable monthly revenue with performance-aligned success fees. 
-          Transparent AI usage with capped inference consumption.
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
+          Choose the plan that best fits your agency goals and unlock the full potential of AI-powered recruitment matching
         </p>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-4xl mx-auto">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 max-w-3xl mx-auto">
           <p className="text-blue-800 font-medium">
-            🇲🇾 Designed specifically for Malaysian recruitment agencies and HR teams
+            🇲🇾 Designed specifically for Malaysian recruitment agencies
           </p>
         </div>
       </div>
 
       {/* Pricing Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {plans.map((plan, index) => (
-          <Card key={index} className={`relative ${plan.color} ${plan.popular ? 'ring-2 ring-green-500' : ''}`}>
+          <Card key={index} className={`relative ${plan.color} ${plan.popular ? 'ring-2 ring-green-500 scale-105' : ''} shadow-lg`}>
             {plan.popular && (
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-green-500 text-white px-4 py-1">Most Popular</Badge>
+                <Badge className="bg-green-500 text-white px-4 py-1 text-sm font-semibold">POPULAR</Badge>
               </div>
             )}
             
             <CardHeader className="text-center pb-4">
-              <div className="flex justify-center mb-3">
-                <div className={`p-3 rounded-full ${plan.buttonColor.replace('bg-', 'bg-opacity-10 bg-')}`}>
-                  {plan.icon}
+              <CardTitle className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</CardTitle>
+              
+              <div className="mb-4">
+                <div className="text-4xl font-bold text-gray-900">
+                  RM{plan.monthlyPrice}
+                  <span className="text-lg font-normal text-gray-600">/month</span>
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  + <span className="font-semibold text-orange-600">{plan.successFee}</span> success fee per hire
                 </div>
               </div>
-              <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-              <CardDescription className="text-sm">{plan.description}</CardDescription>
               
-              <div className="space-y-2 mt-4">
-                <div className="text-3xl font-bold text-gray-900">
-                  {plan.monthlyPrice}
-                  <span className="text-sm font-normal text-gray-600">/month</span>
-                </div>
-                {plan.annualPrice && (
-                  <div className="text-lg text-green-600 font-semibold">
-                    Annual: {plan.annualPrice}
-                  </div>
-                )}
-                <div className="text-lg">
-                  <span className="font-semibold text-orange-600">{plan.successFee}</span>
-                  <span className="text-sm text-gray-600"> success fee</span>
-                </div>
-                {plan.annualSuccessFee && (
-                  <div className="text-sm text-green-600">
-                    Annual: {plan.annualSuccessFee} success fee
-                  </div>
-                )}
-              </div>
+              <CardDescription className="text-sm text-gray-600 mb-4">
+                {plan.description}
+              </CardDescription>
               
-              {plan.savingsNote && (
-                <div className="bg-green-100 border border-green-200 rounded-lg p-2 mt-3">
-                  <p className="text-xs text-green-700 font-medium">{plan.savingsNote}</p>
-                </div>
-              )}
-              
-              {plan.enterpriseNote && (
-                <div className="bg-purple-100 border border-purple-200 rounded-lg p-2 mt-3">
-                  <p className="text-xs text-purple-700 font-medium">{plan.enterpriseNote}</p>
-                </div>
-              )}
+              <Button className={`w-full ${plan.buttonColor} text-white font-semibold py-3`}>
+                Get {plan.name}
+              </Button>
             </CardHeader>
             
-            <CardContent>
-              <Button className={`w-full mb-6 ${plan.buttonColor}`}>
-                Get Started
-              </Button>
-              
+            <CardContent className="pt-0">
               <div className="space-y-3">
-                {Object.entries(plan.features).map(([feature, value]) => (
-                  <div key={feature} className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{feature}</span>
-                    {renderFeature(value)}
+                {plan.features.map((feature, idx) => (
+                  <div key={idx} className="flex items-start space-x-3">
+                    <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">{feature}</span>
                   </div>
                 ))}
               </div>
@@ -178,73 +130,40 @@ const RecruiterPricingPlans = () => {
         ))}
       </div>
 
-      {/* Feature Comparison Table */}
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="bg-gray-50 px-6 py-4 border-b">
-          <h3 className="text-2xl font-bold text-gray-900">Feature Comparison Matrix</h3>
-          <p className="text-gray-600 mt-1">Detailed breakdown of AI capabilities and platform features</p>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Features</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Basic</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Pro</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Premium</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {Object.keys(plans[0].features).map((feature) => (
-                <tr key={feature} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{feature}</td>
-                  {plans.map((plan, index) => (
-                    <td key={index} className="px-6 py-4 text-center">
-                      {renderFeature(plan.features[feature as keyof typeof plan.features])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* Benefits Section */}
-      <div className="mt-16 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-8">
+      <div className="mt-16 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-8">
         <h3 className="text-2xl font-bold text-center text-gray-900 mb-8">
-          Why Choose Our Hybrid Pricing Model?
+          Why Choose Our AI-Powered Platform?
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <div className="text-blue-600 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg p-6 shadow-sm text-center">
+            <div className="text-blue-600 mb-3 flex justify-center">
               <Zap className="h-8 w-8" />
             </div>
-            <h4 className="font-semibold text-gray-900 mb-2">Predictable Revenue</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Predictable Costs</h4>
             <p className="text-sm text-gray-600">
-              Stable monthly subscription fees provide predictable cash flow for your business planning.
+              Fixed monthly fees with performance-based success fees only when you make successful placements.
             </p>
           </div>
           
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <div className="text-green-600 mb-3">
+          <div className="bg-white rounded-lg p-6 shadow-sm text-center">
+            <div className="text-green-600 mb-3 flex justify-center">
               <Star className="h-8 w-8" />
             </div>
-            <h4 className="font-semibold text-gray-900 mb-2">Performance Aligned</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">AI-Powered Matching</h4>
             <p className="text-sm text-gray-600">
-              Success fees ensure we're invested in your hiring success - you only pay more when you succeed.
+              Advanced machine learning algorithms find the best candidates faster and more accurately.
             </p>
           </div>
           
-          <div className="bg-white rounded-lg p-6 shadow-sm">
-            <div className="text-purple-600 mb-3">
+          <div className="bg-white rounded-lg p-6 shadow-sm text-center">
+            <div className="text-purple-600 mb-3 flex justify-center">
               <Crown className="h-8 w-8" />
             </div>
-            <h4 className="font-semibold text-gray-900 mb-2">AI Cost Transparency</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">Transparent Pricing</h4>
             <p className="text-sm text-gray-600">
-              Clear AI credit system with capped inference consumption - no surprise bills or hidden costs.
+              No hidden costs or surprise bills. Clear AI credit system with capped monthly usage.
             </p>
           </div>
         </div>
@@ -252,9 +171,6 @@ const RecruiterPricingPlans = () => {
         <div className="text-center mt-8">
           <p className="text-lg text-gray-700 mb-4">
             <strong>Ready to transform your recruitment process?</strong>
-          </p>
-          <p className="text-gray-600 mb-6">
-            Join hundreds of Malaysian recruitment agencies already using our AI-powered platform to find better candidates faster.
           </p>
           <Button size="lg" className="bg-blue-600 hover:bg-blue-700 px-8 py-3">
             Schedule a Demo
