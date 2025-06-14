@@ -9,7 +9,7 @@ const PricingPlans = () => {
     {
       name: "Free",
       price: 0,
-      currency: "MYR",
+      currency: "RM",
       description: "Explore how AI can help you with job matching",
       current: true,
       features: [
@@ -24,7 +24,7 @@ const PricingPlans = () => {
     {
       name: "Pro",
       price: 50,
-      currency: "MYR",
+      currency: "RM",
       description: "Get premium features including AI interviewer access",
       popular: true,
       features: [
