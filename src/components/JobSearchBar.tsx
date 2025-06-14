@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -315,7 +314,7 @@ const JobSearchBar = ({ onSearch, onAIMatch }: JobSearchBarProps) => {
           </div>
         </form>
 
-        {/* AI Resume Analysis Component */}
+        {/* AI Resume Analysis Component - without the specified text */}
         <AIResumeAnalysis 
           fileName={lastUploadedFileName}
           filePath={lastUploadedFilePath}
