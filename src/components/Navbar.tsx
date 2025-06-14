@@ -62,9 +62,11 @@ const Navbar = ({ userType }: NavbarProps) => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <span className="font-bold text-2xl tracking-tight text-primary">
-              TalentMatch<span className="text-primary/90">.AI</span>
-            </span>
+            <img 
+              src="/lovable-uploads/d05cc45a-3134-49fc-9dd2-6aedf61c151a.png" 
+              alt="TM.AI Logo" 
+              className="h-8 w-auto"
+            />
           </Link>
 
           {/* Navigation */}
@@ -86,7 +88,9 @@ const Navbar = ({ userType }: NavbarProps) => {
                 </Link>
               );
             })}
-          </nav>          {/* Right Side */}
+          </nav>
+
+          {/* Right Side */}
           <div className="flex items-center space-x-4">
             <TooltipProvider>
               <Tooltip>
