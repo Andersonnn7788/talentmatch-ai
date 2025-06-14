@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Star, Crown, Briefcase } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 const RecruiterPricing = () => {
   const [isAnnual, setIsAnnual] = useState(false);
@@ -20,7 +20,6 @@ const RecruiterPricing = () => {
       buttonText: "Get Basic",
       buttonVariant: "outline" as const,
       isPopular: false,
-      icon: Briefcase,
       savings: null,
       features: [
         "Basic AI candidate matching",
@@ -49,7 +48,6 @@ const RecruiterPricing = () => {
       buttonText: "Get Pro",
       buttonVariant: "default" as const,
       isPopular: true,
-      icon: Star,
       savings: "Save 25% vs Basic + individual success fees",
       features: [
         "Everything in Basic",
@@ -83,7 +81,6 @@ const RecruiterPricing = () => {
       buttonText: isAnnual ? "Get Premium (Annual)" : "Get Premium",
       buttonVariant: "secondary" as const,
       isPopular: false,
-      icon: Crown,
       savings: "Save 40% vs Pro + individual success fees",
       features: [
         "Everything in Pro",
@@ -174,10 +171,6 @@ const RecruiterPricing = () => {
               )}
               
               <CardHeader className="text-center pb-6 pt-8">
-                <div className="flex items-center justify-center mb-4">
-                  <plan.icon className="h-8 w-8 text-slate-700" />
-                </div>
-                
                 <CardTitle className="text-2xl font-bold text-slate-900 mb-4">
                   {plan.name}
                 </CardTitle>
