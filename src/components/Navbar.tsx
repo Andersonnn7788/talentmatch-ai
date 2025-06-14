@@ -65,7 +65,7 @@ const Navbar = ({ userType }: NavbarProps) => {
             <img 
               src="/lovable-uploads/d05cc45a-3134-49fc-9dd2-6aedf61c151a.png" 
               alt="TM.AI Logo" 
-              className="h-8 w-auto"
+              className="h-12 w-auto"
             />
           </Link>
 
