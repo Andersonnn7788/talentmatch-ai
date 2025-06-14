@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { User, BriefcaseBusiness, Search, Bell, Video, GraduationCap, SwitchCamera, DollarSign } from 'lucide-react';
+import { User, BriefcaseBusiness, Search, Bell, Video, GraduationCap, SwitchCamera } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import AuthNavbar from '@/components/AuthNavbar';
 
@@ -28,7 +29,6 @@ const Navbar = ({ userType }: NavbarProps) => {
         { name: 'Candidates', path: `${basePath}/candidates`, icon: BriefcaseBusiness },
         { name: 'Aptitude Tests', path: `${basePath}/aptitude`, icon: GraduationCap },
         { name: 'Interviews', path: `${basePath}/interviews`, icon: Video },
-        { name: 'Pricing', path: `${basePath}/pricing`, icon: DollarSign },
       ];
 
   const handleSwitchRole = () => {

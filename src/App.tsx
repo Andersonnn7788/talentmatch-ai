@@ -1,115 +1,111 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "./components/ui/toaster";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
-
-// Pages
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import TestPage from "./pages/TestPageFixed";
+import EnvTest from "./pages/EnvTest";
+import SimpleTest from "./pages/SimpleTest";
 
 // Employee Pages
 import EmployeeHome from "./pages/employee/Home";
 import EmployeeProfile from "./pages/employee/Profile";
-import EmployeeJobMatches from "./pages/employee/JobMatches";
+import JobMatches from "./pages/employee/JobMatches";
 import EmployeeAptitudeTests from "./pages/employee/AptitudeTests";
 import EmployeeInterviews from "./pages/employee/Interviews";
 
 // Recruiter Pages
 import RecruiterHome from "./pages/recruiter/Home";
 import RecruiterProfile from "./pages/recruiter/Profile";
-import RecruiterCandidates from "./pages/recruiter/Candidates";
-import RecruiterAptitude from "./pages/recruiter/Aptitude";
+import Candidates from "./pages/recruiter/Candidates";
+import RecruiterAptitudeTests from "./pages/recruiter/Aptitude";
 import RecruiterInterviews from "./pages/recruiter/Interviews";
-import RecruiterPricing from "./pages/RecruiterPricing";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
           <Routes>
-            {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             
-            {/* Employee routes */}
+            {/* Employee Routes */}
             <Route path="/employee/home" element={
-              <ProtectedRoute>
+              <ProtectedRoute userType="employee">
                 <EmployeeHome />
               </ProtectedRoute>
             } />
             <Route path="/employee/profile" element={
-              <ProtectedRoute>
+              <ProtectedRoute userType="employee">
                 <EmployeeProfile />
               </ProtectedRoute>
             } />
             <Route path="/employee/job-matches" element={
-              <ProtectedRoute>
-                <EmployeeJobMatches />
+              <ProtectedRoute userType="employee">
+                <JobMatches />
               </ProtectedRoute>
             } />
             <Route path="/employee/aptitude-tests" element={
-              <ProtectedRoute>
+              <ProtectedRoute userType="employee">
                 <EmployeeAptitudeTests />
               </ProtectedRoute>
             } />
             <Route path="/employee/interviews" element={
-              <ProtectedRoute>
+              <ProtectedRoute userType="employee">
                 <EmployeeInterviews />
               </ProtectedRoute>
             } />
             
-            {/* Recruiter routes */}
+            {/* Recruiter Routes */}
             <Route path="/recruiter/home" element={
-              <ProtectedRoute>
+              <ProtectedRoute userType="recruiter">
                 <RecruiterHome />
               </ProtectedRoute>
             } />
             <Route path="/recruiter/profile" element={
-              <ProtectedRoute>
+              <ProtectedRoute userType="recruiter">
                 <RecruiterProfile />
               </ProtectedRoute>
             } />
             <Route path="/recruiter/candidates" element={
-              <ProtectedRoute>
-                <RecruiterCandidates />
+              <ProtectedRoute userType="recruiter">
+                <Candidates />
               </ProtectedRoute>
             } />
             <Route path="/recruiter/aptitude" element={
-              <ProtectedRoute>
-                <RecruiterAptitude />
+              <ProtectedRoute userType="recruiter">
+                <RecruiterAptitudeTests />
               </ProtectedRoute>
-            } />
-            <Route path="/recruiter/interviews" element={
-              <ProtectedRoute>
+            } />            <Route path="/recruiter/interviews" element={
+              <ProtectedRoute userType="recruiter">
                 <RecruiterInterviews />
               </ProtectedRoute>
             } />
-            <Route path="/recruiter/pricing" element={
-              <ProtectedRoute>
-                <RecruiterPricing />
-              </ProtectedRoute>
-            } />
+              {/* Test Page for Resume Upload */}
+            <Route path="/test" element={<TestPage />} />
+              {/* Environment Variables Test */}
+            <Route path="/env-test" element={<EnvTest />} />
             
-            {/* Redirect /employee and /recruiter to their home pages */}
-            <Route path="/employee" element={<Navigate to="/employee/home" replace />} />
-            <Route path="/recruiter" element={<Navigate to="/recruiter/home" replace />} />
+            {/* Simple Test */}
+            <Route path="/simple-test" element={<SimpleTest />} />
             
-            {/* 404 route */}
+            {/* Not Found */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
   </QueryClientProvider>
 );
 
