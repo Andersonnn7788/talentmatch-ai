@@ -29,6 +29,7 @@ const Navbar = ({ userType }: NavbarProps) => {
         { name: 'Candidates', path: `${basePath}/candidates`, icon: BriefcaseBusiness },
         { name: 'Aptitude Tests', path: `${basePath}/aptitude`, icon: GraduationCap },
         { name: 'Interviews', path: `${basePath}/interviews`, icon: Video },
+        { name: 'Pricing', path: `${basePath}/pricing`, icon: User },
       ];
 
   const handleSwitchRole = () => {

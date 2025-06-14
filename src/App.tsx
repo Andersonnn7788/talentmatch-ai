@@ -26,6 +26,7 @@ import RecruiterProfile from "./pages/recruiter/Profile";
 import Candidates from "./pages/recruiter/Candidates";
 import RecruiterAptitudeTests from "./pages/recruiter/Aptitude";
 import RecruiterInterviews from "./pages/recruiter/Interviews";
+import RecruiterPricing from "./pages/recruiter/Pricing";
 
 const queryClient = new QueryClient();
 
@@ -87,14 +88,21 @@ const App = () => (
               <ProtectedRoute userType="recruiter">
                 <RecruiterAptitudeTests />
               </ProtectedRoute>
-            } />            <Route path="/recruiter/interviews" element={
+            } />
+            <Route path="/recruiter/interviews" element={
               <ProtectedRoute userType="recruiter">
                 <RecruiterInterviews />
               </ProtectedRoute>
             } />
-              {/* Test Page for Resume Upload */}
+            <Route path="/recruiter/pricing" element={
+              <ProtectedRoute userType="recruiter">
+                <RecruiterPricing />
+              </ProtectedRoute>
+            } />
+            
+            {/* Test Page for Resume Upload */}
             <Route path="/test" element={<TestPage />} />
-              {/* Environment Variables Test */}
+            {/* Environment Variables Test */}
             <Route path="/env-test" element={<EnvTest />} />
             
             {/* Simple Test */}
